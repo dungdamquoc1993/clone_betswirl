@@ -1,0 +1,29 @@
+{
+  "name": "training_bet_sol",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.1.0",
+    "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "@types/mocha": "^9.1.1",
+    "chai": "^4.3.6",
+    "ethereum-waffle": "^3.4.4",
+    "ethers": "^5.6.9",
+    "hardhat": "^2.9.9"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^0.4.2",
+    "@nomiclabs/hardhat-etherscan": "^3.1.0",
+    "@openzeppelin/contracts": "^4.7.3",
+    "hardhat-deploy": "^0.11.10",
+    "jest": "^28.1.1",
+    "sha256": "^0.2.0",
+    "ts-node": "^10.8.1"
+  }
+}

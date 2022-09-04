@@ -1,0 +1,93 @@
+Nổ hũ (jackpot)
+Tài xỉu
+Roulett
+
+
+VRFFee = total VRFCost of specific token
+VRFCost = cost VRF cost for one bet 
+
+wager (roulette) 
+=> new_bet (game) 
+=> request_random_words (VRFCoordinatorV2Interface)
+=> random (roulette VRFConsumerBaseV2) => resolve(game)
+
+
+ROLE:
+
+Constructor => setup default role as DEFAULT_ADMIN_ROLE
+
+ROLE require
+Deposit => 						onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+Withdrawn => 					onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+setBalanceRisk => 				onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+setPausedToken => 				onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+setMinPartnerTransferAmount =>  onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+setTokenPartner => 				onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+setTokenMinBetAmount => 		onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+setTokenVRFSubId => 			onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+
+setHouseEdgeSplit => 			onlyRole(DEFAULT_ADMIN_ROLE) 
+setTeamWallet => 				onlyRole(DEFAULT_ADMIN_ROLE)
+addToken => 					onlyRole(DEFAULT_ADMIN_ROLE) 
+setAllowedToken => 				onlyRole(DEFAULT_ADMIN_ROLE)
+
+payout => 						onlyRole(GAME_ROLE)
+cashIn => 						onlyRole(GAME_ROLE)
+harvest => 						onlyRole(SWIRLMASTER_ROLE)
+
+
+Get ROLE   
+    function getTokenOwner(address token) external view returns (address) {
+        address partner = tokens[token].partner;
+        if (partner == address(0)) {
+            return getRoleMember(DEFAULT_ADMIN_ROLE, 0);
+        } else {
+            return partner;
+        }
+    }
+
+Require ROLE to perform
+function withdraw(address token, uint256 amount)
+        public
+        onlyTokenOwner(DEFAULT_ADMIN_ROLE, token)
+    {
+        uint256 balance = getBalance(token);
+        if (balance != 0) {
+            if (!tokens[token].paused) {
+                revert TokenNotPaused();
+            }
+
+            uint256 roleMemberCount = getRoleMemberCount(GAME_ROLE);
+            for (uint256 i; i < roleMemberCount; i++) {
+                if (IGame(getRoleMember(GAME_ROLE, i)).hasPendingBets(token)) {
+                    revert TokenHasPendingBets();
+                }
+            }
+        }
+
+        if (amount > balance) {
+            amount = balance;
+        }
+        _safeTransfer(msg.sender, token, amount);
+        emit Withdraw(token, amount);
+    }
+    function setTokenPartner(address token, address partner)
+        external
+        onlyTokenOwner(DEFAULT_ADMIN_ROLE, token)
+    {
+        uint256 roleMemberCount = getRoleMemberCount(GAME_ROLE);
+        for (uint256 i; i < roleMemberCount; i++) {
+            IGame(getRoleMember(GAME_ROLE, i)).withdrawTokensVRFFees(token);
+        }
+        withdrawPartnerAmount(token);
+        withdraw(token, getBalance(token));
+        tokens[token].partner = partner;
+        emit SetTokenPartner(token, partner);
+    }
+
+
+
+
+
+
+
