@@ -73,7 +73,6 @@ abstract contract AccessControl is Context, IAccessControl, ERC165 {
         return _roles[role].adminRole;
     }
 
-    // no need this anymore
     function grantRole(bytes32 role, address account)
         public
         virtual
@@ -128,6 +127,7 @@ abstract contract AccessControl is Context, IAccessControl, ERC165 {
             emit RoleRevoked(role, account, _msgSender());
         }
     }
+
 }
 
 abstract contract AccessControlEnumerable is
@@ -160,6 +160,7 @@ abstract contract AccessControlEnumerable is
         return _roleMembers[role].at(index);
     }
 
+
     function getRoleMemberCount(bytes32 role)
         public
         view
@@ -169,16 +170,7 @@ abstract contract AccessControlEnumerable is
     {
         return _roleMembers[role].length();
     }
-    // struct RoleData {
-    //     mapping(address => bool) members;
-    //     bytes32 adminRole;
-    // }
-    // mapping(bytes32 => RoleData) private _roles;
-    // struct Set {
-    //     bytes32[] _values;
-    //     mapping(bytes32 => uint256) _indexes;
-    // }
-    // struct AddressSet {Set _inner};
+    
     function _grantRole(bytes32 role, address account)
         internal
         virtual
@@ -197,3 +189,20 @@ abstract contract AccessControlEnumerable is
         _roleMembers[role].remove(account);
     }
 }
+
+//  struct RoleData {
+//         mapping(address => bool) members;
+//         bytes32 adminRole;
+//     }
+//   mapping(bytes32 => RoleData) private _roles;
+
+//   struct Set {
+//         bytes32[] _values;
+//         mapping(bytes32 => uint256) _indexes;
+//    }
+//   struct AddressSet {
+//         Set _inner;
+//    }
+//  mapping(bytes32 => EnumerableSet.AddressSet) private _roleMembers;       
+//         return _roleMembers[role].at(index);
+//         return _roleMembers[role].length();

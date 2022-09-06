@@ -316,7 +316,7 @@ contract Bank is AccessControlEnumerable, KeeperCompatibleInterface, Multicall {
     {
         uint256 balance = getBalance(token);
         if (balance != 0) {
-            if (!tokens[token].paused) {
+            if (!tokens[token].paused) { // should be opposite
                 revert TokenNotPaused();
             }
 
@@ -787,3 +787,46 @@ contract Bank is AccessControlEnumerable, KeeperCompatibleInterface, Multicall {
             tokenHouseEdgeSplit.teamAmount;
     }
 }
+
+
+// ROLE:
+// Constructor => (address treasuryAddress, address teamWalletAddress) setup default role as DEFAULT_ADMIN_ROLE
+
+// ROLE require
+// Deposit => 						external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// Withdrawn => 					public onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// setBalanceRisk => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// setPausedToken => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// setMinPartnerTransferAmount =>  external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// setTokenPartner => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// setTokenMinBetAmount => 		external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// setTokenVRFSubId => 			external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+
+// setHouseEdgeSplit => 			external onlyRole(DEFAULT_ADMIN_ROLE) 
+// setTeamWallet => 				public onlyRole(DEFAULT_ADMIN_ROLE)
+// addToken => 					external onlyRole(DEFAULT_ADMIN_ROLE) 
+// setAllowedToken => 				external onlyRole(DEFAULT_ADMIN_ROLE)
+
+// payout => 						external onlyRole(GAME_ROLE)
+// cashIn => 						external onlyRole(GAME_ROLE)
+// harvest => 						external onlyRole(SWIRLMASTER_ROLE)
+
+// _safeTransfer => private noRole
+// _isGasToken => private noRole
+// getDividends => external noRole
+// performUpkeep => external noRole
+// getTokens => external noRole
+// getMinBetAmount => external noRole
+// getMaxBetAmount => external noRole
+// checkUpkeep => external noRole (Chainlink)
+// getVRFSubId => external noRole
+// getTokenOwner => external noRole
+// withdrawHouseEdgeAmount => public noRole
+// withdrawPartnerAmount => public noRole
+// getBalance => public noRole
+// performUpkeep => external noRole
+// getTokens => external noRole
+
+
+
+

@@ -1,0 +1,88 @@
+
+------------------ Bank ----------------------
+    struct HouseEdgeSplit {
+        uint16 bank;
+        uint16 dividend;
+        uint16 partner;
+        uint16 treasury;
+        uint16 team;
+        uint256 dividendAmount;
+        uint256 partnerAmount;
+        uint256 treasuryAmount;
+        uint256 teamAmount;
+    }
+
+    struct Token {
+        bool allowed;
+        bool paused;
+        uint16 balanceRisk;
+        uint64 VRFSubId;
+        address partner;
+        uint256 minBetAmount;
+        uint256 minPartnerTransferAmount;
+        HouseEdgeSplit houseEdgeSplit;
+    }
+    uint8 private _tokensCount;
+    address public immutable treasury;
+    address public teamWallet;
+    bytes32 public constant GAME_ROLE = keccak256("GAME_ROLE");
+    bytes32 public constant SWIRLMASTER_ROLE = keccak256("SWIRLMASTER_ROLE");
+    mapping(address => Token) public tokens;
+    mapping(uint8 => address) private _tokensList;
+
+------------------ Game ----------------------
+    struct Bet {
+        bool resolved;
+        address payable user;
+        address token;
+        uint256 id;
+        uint256 amount;
+        uint256 blockNumber;
+        uint256 payout;
+        uint256 vrfCost;
+    }
+
+    /// @param houseEdge House edge rate.
+    /// @param pendingCount Number of pending bets.
+    /// @param VRFCallbackGasLimit How much gas is needed in the Chainlink VRF callback.
+    /// @param VRFFees Chainlink's VRF collected fees amount.
+    struct Token {
+        uint16 houseEdge;
+        uint64 pendingCount;
+        uint32 VRFCallbackGasLimit;
+        uint256 VRFFees;
+    }
+
+    /// @param requestConfirmations How many confirmations the Chainlink node should wait before responding.
+    /// @param numRandomWords How many random words is needed to resolve a game's bet.
+    /// @param keyHash Hash of the public key used to verify the VRF proof.
+    /// @param chainlinkCoordinator Reference to the VRFCoordinatorV2 deployed contract.
+    struct ChainlinkConfig {
+        uint16 requestConfirmations;
+        uint16 numRandomWords;
+        bytes32 keyHash;
+        IVRFCoordinatorV2 chainlinkCoordinator;
+    }
+
+    ChainlinkConfig private _chainlinkConfig;
+
+    AggregatorV3Interface private immutable _LINK_ETH_feed;
+
+    mapping(uint256 => Bet) public bets;
+
+    mapping(address => uint256[]) internal _userBets;
+
+    mapping(address => Token) public tokens;
+
+    IBank public bank;
+
+------------------ Roulett ----------------------
+    struct FullRouletteBet {
+        Bet bet;
+        RouletteBet rouletteBet;
+    }
+    struct RouletteBet {
+        uint40 numbers;
+        uint8 rolled;
+    }
+    mapping(uint256 => RouletteBet) public rouletteBets;

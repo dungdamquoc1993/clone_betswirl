@@ -3,7 +3,9 @@ import { Contract, ContractFactory } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import { ethers } from "hardhat";
 
-const oracleResponse = ethers.utils.hexZeroPad(ethers.utils.hexlify(0), 32)
+const ROLE = ethers.utils.hexZeroPad(ethers.utils.hexlify(12345), 64)
+const GAME_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GAME_ROLE"))
+
 
 describe("Casino", async () => {
   beforeEach( async () => {
@@ -11,8 +13,9 @@ describe("Casino", async () => {
     const factory = await ethers.getContractFactory("Bank");
     const bankContract = await factory.deploy(b0.address, b1.address)
     await bankContract.deployed();
-    await bankContract.connect(b1).withdraw("0xd73812a2e5d57bbeA5Ef7A142D78DA1c383A345f", 10000)
-
+    await bankContract.grantRole(GAME_ROLE, b1.address)
+    const gameRoleMember = await bankContract.getRoleMember(GAME_ROLE, 0)
+    console.log(gameRoleMember == b1.address)
   })
   it("Accesscontroll", async () => {
 
