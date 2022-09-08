@@ -146,9 +146,6 @@ abstract contract Game is
 
     error InvalidAddress();
 
-    /// @param bankAddress The address of the bank.
-    /// @param chainlinkCoordinatorAddress Address of the Chainlink VRF Coordinator.
-    /// @param numRandomWords How many random words is needed to resolve a game's bet.
     constructor(
         address bankAddress,
         address chainlinkCoordinatorAddress,
@@ -266,7 +263,7 @@ abstract contract Game is
 
         return newBet;
     }
-
+    
     /// @notice Resolves the bet based on the game child contract result.
     /// In case bet is won, the bet amount minus the house edge is transfered to user from the game contract, and the profit is transfered to the user from the Bank.
     /// In case bet is lost, the bet amount is transfered to the Bank from the game contract.
@@ -507,5 +504,37 @@ abstract contract Game is
             ((1e12 *
                 uint256(fulfillmentFlatFeeLinkPPMTier1) *
                 uint256(weiPerUnitLink)) / 1e18);
+                // fulfillmentFlatFeeLinkPPMTier1, weiPerUnitLink
     }
 }
+
+// wager (roulette) 
+// => new_bet (game) 
+// => request_random_words (VRFCoordinatorV2Interface)
+// => random (roulette VRFConsumerBaseV2) => resolve(game)
+
+//  _getFees(address token, uint256 amount) private returns (uint256)
+
+//  _newBet(address tokenAddress, uint256 tokenAmount, uint256 multiplier) internal whenNotPaused nonReentrant returns (Bet memory)
+
+//  _resolveBet(Bet storage bet, bool wins, uint256 payout) internal returns (uint256) 
+
+//  _getLastUserBets(address user, uint256 dataLength) internal returns (Bet[] memory)
+ 
+//  setHouseEdge(address token, uint16 houseEdge) external onlyOwner 350
+
+//  pause() external onlyOwner
+
+//  setChainlinkConfig(uint16 requestConfirmations, bytes32 keyHash) external onlyOwner 3, 
+
+//  setVRFCallbackGasLimit(address token, uint32 callbackGasLimit) external onlyOwner 100000
+
+//  withdrawTokensVRFFees(address token) external 
+
+//  refundBet(uint256 id) external nonReentrant
+
+//  hasPendingBets(address token) external view returns (bool)
+
+//  setBank(IBank _bank) public onlyOwner
+
+//  getChainlinkVRFCost(address token) public view returns (uint256) 

@@ -41,22 +41,12 @@
         uint256 payout;
         uint256 vrfCost;
     }
-
-    /// @param houseEdge House edge rate.
-    /// @param pendingCount Number of pending bets.
-    /// @param VRFCallbackGasLimit How much gas is needed in the Chainlink VRF callback.
-    /// @param VRFFees Chainlink's VRF collected fees amount.
     struct Token {
         uint16 houseEdge;
         uint64 pendingCount;
         uint32 VRFCallbackGasLimit;
         uint256 VRFFees;
     }
-
-    /// @param requestConfirmations How many confirmations the Chainlink node should wait before responding.
-    /// @param numRandomWords How many random words is needed to resolve a game's bet.
-    /// @param keyHash Hash of the public key used to verify the VRF proof.
-    /// @param chainlinkCoordinator Reference to the VRFCoordinatorV2 deployed contract.
     struct ChainlinkConfig {
         uint16 requestConfirmations;
         uint16 numRandomWords;
@@ -65,15 +55,10 @@
     }
 
     ChainlinkConfig private _chainlinkConfig;
-
     AggregatorV3Interface private immutable _LINK_ETH_feed;
-
     mapping(uint256 => Bet) public bets;
-
     mapping(address => uint256[]) internal _userBets;
-
     mapping(address => Token) public tokens;
-
     IBank public bank;
 
 ------------------ Roulett ----------------------
@@ -86,3 +71,5 @@
         uint8 rolled;
     }
     mapping(uint256 => RouletteBet) public rouletteBets;
+
+

@@ -3,23 +3,20 @@ import { Contract, ContractFactory } from "ethers";
 import { parseUnits } from "ethers/lib/utils";
 import { ethers } from "hardhat";
 
-const ROLE = ethers.utils.hexZeroPad(ethers.utils.hexlify(12345), 64)
-const GAME_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GAME_ROLE"))
-
+const ROLE = ethers.utils.hexZeroPad(ethers.utils.hexlify(12345), 64);
+const GAME_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GAME_ROLE"));
 
 describe("Casino", async () => {
-  beforeEach( async () => {
-    const [b0, b1, b2, b3] = await ethers.getSigners()
+  beforeEach(async () => {
+    const [b0, b1, b2, b3] = await ethers.getSigners();
     const factory = await ethers.getContractFactory("Bank");
-    const bankContract = await factory.deploy(b0.address, b1.address)
+    const bankContract = await factory.deploy(b0.address, b1.address);
     await bankContract.deployed();
-    await bankContract.grantRole(GAME_ROLE, b1.address)
-    const gameRoleMember = await bankContract.getRoleMember(GAME_ROLE, 0)
-    console.log(gameRoleMember == b1.address)
-  })
-  it("Accesscontroll", async () => {
-
+    await bankContract.addToken("0x7af963cF6D228E564e2A0aA0DdBF06210B38615D");
+    await bankContract.setTokenVRFSubId(b3.address, 1100);
+    await bankContract.checkValue()
   });
+  it("Accesscontroll", async () => {});
   //   it("Not allow you to propose a zero wei bet", async () => {
   //     let f = await ethers.getContractFactory("Casino")
   //     let c = await f.deploy()

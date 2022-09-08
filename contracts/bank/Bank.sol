@@ -786,6 +786,7 @@ contract Bank is AccessControlEnumerable, KeeperCompatibleInterface, Multicall {
             tokenHouseEdgeSplit.treasuryAmount -
             tokenHouseEdgeSplit.teamAmount;
     }
+
 }
 
 
@@ -795,10 +796,10 @@ contract Bank is AccessControlEnumerable, KeeperCompatibleInterface, Multicall {
 // ROLE require
 // Deposit => 						external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
 // Withdrawn => 					public onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// setBalanceRisk => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// setPausedToken => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// setMinPartnerTransferAmount =>  external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// setTokenPartner => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// setBalanceRisk => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 2
+// setPausedToken => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) false
+// setMinPartnerTransferAmount =>  external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 2
+// setTokenPartner => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 
 // setTokenMinBetAmount => 		external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
 // setTokenVRFSubId => 			external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
 
@@ -815,17 +816,15 @@ contract Bank is AccessControlEnumerable, KeeperCompatibleInterface, Multicall {
 // _isGasToken => private noRole
 // getDividends => external noRole
 // performUpkeep => external noRole
+// checkUpkeep => external noRole (Chainlink)
 // getTokens => external noRole
 // getMinBetAmount => external noRole
 // getMaxBetAmount => external noRole
-// checkUpkeep => external noRole (Chainlink)
 // getVRFSubId => external noRole
 // getTokenOwner => external noRole
 // withdrawHouseEdgeAmount => public noRole
 // withdrawPartnerAmount => public noRole
 // getBalance => public noRole
-// performUpkeep => external noRole
-// getTokens => external noRole
 
 
 
