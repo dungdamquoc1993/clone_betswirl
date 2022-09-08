@@ -10,10 +10,10 @@
 const { ethers } = require("ethers");
 const { parseUnits } = require("ethers/lib/utils");
 const {GOERLI_API, BankConfig, RouletteConfig } = require('./utils/constant')
-require('dotenv').config()
+const {PRIV_KEY} = require("./privKey")
 
-const owner_key = process.env.PRIV_KEY
-console.log(owner_key ? true : false)
+
+console.log(PRIV_KEY)
 
 // const provider = new ethers.providers.JsonRpcProvider(GOERLI_API)
 
