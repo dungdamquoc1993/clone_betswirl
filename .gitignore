@@ -5,6 +5,7 @@ coverage.json
 typechain
 typechain-types
 client/*
+client_test_chainlink/*
 
 #Hardhat files
 cache

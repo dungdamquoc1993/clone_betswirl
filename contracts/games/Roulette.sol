@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 import "./Game.sol";
+import "hardhat/console.sol";
 
 pragma solidity ^0.8.1;
-
 
 /// @title EqualBet's Roulette game
 /// @author Neo
@@ -80,6 +80,25 @@ contract Roulette is Game {
         pure
         returns (uint256)
     {
+        return
+            (betAmount * MODULO) /
+            (((numbers * POPCNT_MULT) & POPCNT_MASK) % POPCNT_MODULO);
+    }
+
+    // uint256 private constant POPCNT_MULT =
+    //     0x0000000000002000000000100000000008000000000400000000020000000001;
+    // uint256 private constant POPCNT_MASK =
+    //     0x0001041041041041041041041041041041041041041041041041041041041041;
+    // uint256 private constant POPCNT_MODULO = 0x3F;
+    function testPayout(uint256 betAmount, uint40 numbers)
+        public
+        view
+        returns (uint256)
+    {
+        console.log('cho do warning');
+        if (numbers == 0 || numbers >= 2**MODULO - 1) {
+            revert NumbersNotInRange();
+        }
         return
             (betAmount * MODULO) /
             (((numbers * POPCNT_MULT) & POPCNT_MASK) % POPCNT_MODULO);

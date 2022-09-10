@@ -1,7 +1,7 @@
 import "@nomiclabs/hardhat-waffle";
 import "@nomiclabs/hardhat-etherscan";
-import * as dotenv from "dotenv";
-dotenv.config();
+require('dotenv').config({path:"/Users/damquocdung/Desktop/solidity/training_bet_sol"+'/.env'})
+
 const priv_key = process.env.PRIV_KEY;
 
 module.exports = {

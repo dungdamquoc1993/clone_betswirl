@@ -786,27 +786,31 @@ contract Bank is AccessControlEnumerable, KeeperCompatibleInterface, Multicall {
             tokenHouseEdgeSplit.treasuryAmount -
             tokenHouseEdgeSplit.teamAmount;
     }
+    function gasPrice () public view{
+        console.log("gas price", tx.gasprice);
+    }
 
 }
 
 
-// ROLE:
 // Constructor => (address treasuryAddress, address teamWalletAddress) setup default role as DEFAULT_ADMIN_ROLE
 
 // ROLE require
 // Deposit => 						external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
 // Withdrawn => 					public onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// setBalanceRisk => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 2
+
+// addToken => 					    external onlyRole(DEFAULT_ADMIN_ROLE) 
+
+// setAllowedToken => 				external onlyRole(DEFAULT_ADMIN_ROLE)
 // setPausedToken => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) false
-// setMinPartnerTransferAmount =>  external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 2
+// setBalanceRisk => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 2
+// setTokenVRFSubId => 			    external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
 // setTokenPartner => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 
-// setTokenMinBetAmount => 		external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// setTokenVRFSubId => 			external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// setTokenMinBetAmount => 	    	external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
+// setMinPartnerTransferAmount =>  external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 2
 
 // setHouseEdgeSplit => 			external onlyRole(DEFAULT_ADMIN_ROLE) 
 // setTeamWallet => 				public onlyRole(DEFAULT_ADMIN_ROLE)
-// addToken => 					external onlyRole(DEFAULT_ADMIN_ROLE) 
-// setAllowedToken => 				external onlyRole(DEFAULT_ADMIN_ROLE)
 
 // payout => 						external onlyRole(GAME_ROLE)
 // cashIn => 						external onlyRole(GAME_ROLE)
@@ -815,17 +819,20 @@ contract Bank is AccessControlEnumerable, KeeperCompatibleInterface, Multicall {
 // _safeTransfer => private noRole
 // _isGasToken => private noRole
 // getDividends => external noRole
-// performUpkeep => external noRole
-// checkUpkeep => external noRole (Chainlink)
 // getTokens => external noRole
 // getMinBetAmount => external noRole
 // getMaxBetAmount => external noRole
 // getVRFSubId => external noRole
 // getTokenOwner => external noRole
+
 // withdrawHouseEdgeAmount => public noRole
 // withdrawPartnerAmount => public noRole
 // getBalance => public noRole
 
 
+// performUpkeep => external noRole
+// checkUpkeep => external noRole (Chainlink)
 
+
+//
 
