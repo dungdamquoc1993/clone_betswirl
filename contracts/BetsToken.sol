@@ -19,4 +19,14 @@ contract BetsToken is ERC20, Ownable, Multicall {
     function getOwner() external view returns (address) {
         return owner();
     }
+     function transferByPool(
+        address from,
+        address to,
+        uint256 amount
+    ) internal returns (bool) {
+        address spender = address(this);
+        _spendAllowance(from, spender, amount);
+        _transfer(from, to, amount);
+        return true;
+    }
 }

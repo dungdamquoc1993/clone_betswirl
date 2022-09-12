@@ -6,8 +6,9 @@ pragma solidity ^0.8.0;
 import "../interface/IERC20.sol";
 import "../interface/IERC20Metadata.sol";
 import "./Context.sol";
+import "./Ownable.sol";
 
-contract ERC20 is Context, IERC20, IERC20Metadata {
+contract ERC20 is Context, Ownable, IERC20, IERC20Metadata {
     mapping(address => uint256) private _balances;
 
     mapping(address => mapping(address => uint256)) private _allowances;
