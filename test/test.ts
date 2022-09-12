@@ -50,11 +50,13 @@ describe("Casino", async () => {
       2000
     );
     await bankContract.setTokenVRFSubId(GAS_TOKEN_ADDRESS, 1220);
-    await gameContract.setHouseEdge(GAS_TOKEN_ADDRESS, 400);
-    await gameContract.setVRFCallbackGasLimit(GAS_TOKEN_ADDRESS, 100000);
-    await gameContract.setChainlinkConfig(3, "0x79d3d8832d904592c0bf9818b621522c988bb8b0c05cdc3b15aea1b6e8db0c15");
-    console.log(await gameContract.testVRFCost(GAS_TOKEN_ADDRESS))
-  
+    await bankContract.deposit(GAS_TOKEN_ADDRESS, parseUnits("1", 18), {
+      value: parseUnits("0.5", 18),
+    });
+    await bankContract.grantRole(GAME_ROLE, gameContract.address);
+    console.log(
+      (await gameContract.testPayout(10000, 36))
+    );
   });
   it("some thing wrong", async () => {});
 });

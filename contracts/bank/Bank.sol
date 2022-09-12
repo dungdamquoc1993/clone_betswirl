@@ -786,10 +786,6 @@ contract Bank is AccessControlEnumerable, KeeperCompatibleInterface, Multicall {
             tokenHouseEdgeSplit.treasuryAmount -
             tokenHouseEdgeSplit.teamAmount;
     }
-    function gasPrice () public view{
-        console.log("gas price", tx.gasprice);
-    }
-
 }
 
 

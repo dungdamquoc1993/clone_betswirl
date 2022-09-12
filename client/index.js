@@ -133,6 +133,11 @@ async function main() {
     const gameContract = getContractWithSignKey(PRIV_KEY0, RouletteConfig)
     const bankContract = getContractWithSignKey(PRIV_KEY0, BankConfig)
     const tokenAddress = "0x0000000000000000000000000000000000000000"
+    const maxBetAmount = await bankContract.getMaxBetAmount(tokenAddress, 185000)
+    const minBetAmount = await bankContract.getMinBetAmount(tokenAddress)
+    const wager = await gameContract.wager(36, tokenAddress, parseUnits("0.001025436969223264", 18), {value: parseUnits("0.01025436969223264", 18)})
+    await wager.wait()
+    console.log(await gameContract.getLastUserBets("0x59772e95C77Dd1575fB916DACDFabEF688cc7971", 4))
 }
 
 main()

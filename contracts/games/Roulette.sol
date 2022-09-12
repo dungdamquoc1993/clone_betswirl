@@ -95,7 +95,6 @@ contract Roulette is Game {
         view
         returns (uint256)
     {
-        console.log('cho do warning');
         if (numbers == 0 || numbers >= 2**MODULO - 1) {
             revert NumbersNotInRange();
         }

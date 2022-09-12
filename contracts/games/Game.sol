@@ -214,6 +214,9 @@ abstract contract Game is
 
         // Bet amount is capped.
         {
+            // token,
+            // tokenAmount,
+            // _getPayout(10000, numbers)
             uint256 minBetAmount = bank.getMinBetAmount(tokenAddress);
             if (betAmount < minBetAmount) {
                 revert UnderMinBetAmount(minBetAmount);
