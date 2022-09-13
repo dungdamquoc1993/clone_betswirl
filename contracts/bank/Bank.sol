@@ -11,6 +11,8 @@ import "../interface/IERC20Metadata.sol";
 import "../interface/IGame.sol";
 import "../abstract/Multicall.sol";
 import "../abstract/AccessControlEnumerable.sol";
+import "../BankLPToken.sol";
+import "../interface/IBankLPToken.sol";
 
 contract Bank is AccessControlEnumerable, Multicall {
     using SafeERC20 for IERC20;
@@ -22,7 +24,6 @@ contract Bank is AccessControlEnumerable, Multicall {
     struct HouseEdgeSplit {
         uint16 bank;
         uint16 dividend;
-        uint16 partner;
         uint16 treasury;
         uint16 team;
         uint256 dividendAmount;
@@ -35,8 +36,9 @@ contract Bank is AccessControlEnumerable, Multicall {
         bool allowed;
         bool paused;
         uint16 balanceRisk;
+        uint256 lpTokenPerToken;
+        address lpToken;
         uint64 VRFSubId;
-        address partner;
         uint256 minBetAmount;
         uint256 minPartnerTransferAmount;
         HouseEdgeSplit houseEdgeSplit;
@@ -83,9 +85,12 @@ contract Bank is AccessControlEnumerable, Multicall {
         uint256 minPartnerTransferAmount
     );
 
-    event SetTokenPartner(address indexed token, address partner);
-
-    event Deposit(address indexed token, uint256 amount);
+    event Deposit(
+        address indexed token,
+        address user,
+        uint256 amount,
+        uint256 lpMintAmount
+    );
 
     event Withdraw(address indexed token, uint256 amount);
 
@@ -93,7 +98,6 @@ contract Bank is AccessControlEnumerable, Multicall {
         address indexed token,
         uint16 bank,
         uint16 dividend,
-        uint16 partner,
         uint16 treasury,
         uint16 team
     );
@@ -106,13 +110,12 @@ contract Bank is AccessControlEnumerable, Multicall {
         address indexed token,
         uint256 partnerAmount
     );
-    event HarvestDividend(address indexed token, uint256 amount);
 
+    event SetLpTokenPerToken(address token, uint256 lpTokenPerToken);
     event AllocateHouseEdgeAmount(
         address indexed token,
         uint256 bank,
         uint256 dividend,
-        uint256 partner,
         uint256 treasury,
         uint256 team
     );
@@ -126,18 +129,6 @@ contract Bank is AccessControlEnumerable, Multicall {
     error WrongAddress();
     error TokenNotPaused();
     error TokenHasPendingBets();
-
-    modifier onlyTokenOwner(bytes32 role, address token) {
-        address partner = tokens[token].partner;
-        if (partner == address(0)) {
-            // owner of contract
-            _checkRole(role, msg.sender);
-        } else if (msg.sender != partner) {
-            // partner
-            revert AccessDenied();
-        }
-        _;
-    }
 
     constructor(address treasuryAddress, address teamWalletAddress) {
         if (treasuryAddress == address(0)) {
@@ -163,57 +154,28 @@ contract Bank is AccessControlEnumerable, Multicall {
         }
     }
 
-    function _isGasToken(address token) private pure returns (bool) {
-        return token == address(0);
-    }
-
-    function deposit(address token, uint256 amount)
+    function getLpTokenAddress(address bank, address token)
         external
-        payable
-        onlyTokenOwner(DEFAULT_ADMIN_ROLE, token)
+        pure
+        returns (address lpAddress)
     {
-        if (_isGasToken(token)) {
-            amount = msg.value;
-        } else {
-            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        }
-        emit Deposit(token, amount);
+        lpAddress = address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            hex"ff",
+                            bank,
+                            keccak256(abi.encodePacked(token)),
+                            hex"52aa695293493c826ab9df973210314960bb8d661a257badbc9f60d65eeff66e" // init code hash
+                        )
+                    )
+                )
+            )
+        );
     }
 
-    function withdraw(address token, uint256 amount)
-        public
-        onlyTokenOwner(DEFAULT_ADMIN_ROLE, token)
-    {
-        uint256 balance = getBalance(token);
-        if (balance != 0) {
-            if (!tokens[token].paused) {
-                revert TokenNotPaused();
-            }
-
-            uint256 roleMemberCount = getRoleMemberCount(GAME_ROLE);
-            for (uint256 i; i < roleMemberCount; i++) {
-                if (IGame(getRoleMember(GAME_ROLE, i)).hasPendingBets(token)) {
-                    revert TokenHasPendingBets();
-                }
-            }
-        }
-
-        if (amount > balance) {
-            amount = balance;
-        }
-        _safeTransfer(msg.sender, token, amount);
-        emit Withdraw(token, amount);
-    }
-
-    function setBalanceRisk(address token, uint16 balanceRisk)
-        external
-        onlyTokenOwner(DEFAULT_ADMIN_ROLE, token)
-    {
-        tokens[token].balanceRisk = balanceRisk;
-        emit SetBalanceRisk(token, balanceRisk);
-    }
-
-    function addToken(address token) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addToken(address token) public onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_tokensCount != 0) {
             for (uint8 i; i < _tokensCount; i++) {
                 if (_tokensList[i] == token) {
@@ -221,9 +183,100 @@ contract Bank is AccessControlEnumerable, Multicall {
                 }
             }
         }
+        bytes memory bytecode = type(BankLPToken).creationCode;
+        bytes32 salt = keccak256(abi.encodePacked(token));
+        address lpAddress;
+        assembly {
+            lpAddress := create2(0, add(bytecode, 32), mload(bytecode), salt)
+        }
+        IBankLPToken(lpAddress).initialize();
+        Token storage _token = tokens[token];
+        _token.lpToken = lpAddress;
         _tokensList[_tokensCount] = token;
         _tokensCount += 1;
         emit AddToken(token);
+    }
+
+    function setLpTokenPerToken(address tokenAddress, uint256 lpTokenPerToken)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        Token storage token = tokens[tokenAddress];
+        require(
+            token.allowed && !token.paused,
+            "token is not allowed or paused is true"
+        );
+        token.lpTokenPerToken = lpTokenPerToken;
+        emit SetLpTokenPerToken(tokenAddress, lpTokenPerToken);
+    }
+
+    function deposit(
+        address tokenAddress,
+        address userAddress,
+        uint256 amount
+    ) external payable {
+        if (_isGasToken(tokenAddress)) {
+            amount = msg.value;
+        } else {
+            IERC20(tokenAddress).safeTransferFrom(
+                msg.sender,
+                address(this),
+                amount
+            );
+        }
+        Token storage token = tokens[tokenAddress];
+        uint256 liquidity = token.lpTokenPerToken * amount;
+        IBankLPToken(token.lpToken).mint(userAddress, liquidity);
+        require(liquidity > 0, "INSUFFICIENT_LIQUIDITY_MINTED");
+        emit Deposit(tokenAddress, userAddress, amount, liquidity);
+    }
+
+    function withdraw(
+        address tokenAddress,
+        address receiveAddress,
+        uint256 liquidity
+    ) public payable {
+        Token storage token = tokens[tokenAddress];
+        uint256 userLiquidity = IBankLPToken(token.lpToken).balanceOf(
+            _msgSender()
+        );
+        require(
+            liquidity <= userLiquidity,
+            "INSUFFICIENT_LIQUIDITY_TO_WITHDRAW"
+        );
+        IBankLPToken(token.lpToken).transferFrom(
+            _msgSender(),
+            address(this),
+            liquidity
+        );
+        uint256 totalLPSupply = IBankLPToken(token.lpToken).totalSupply();
+        uint256 bankBalance;
+        uint256 withdrawAmount;
+        if (_isGasToken(tokenAddress)) {
+            bankBalance = address(this).balance;
+            withdrawAmount = (liquidity * bankBalance) / totalLPSupply;
+        } else {
+            bankBalance = IERC20(tokenAddress).balanceOf(address(this));
+            withdrawAmount = (liquidity * bankBalance) / totalLPSupply;
+        }
+        IBankLPToken(token.lpToken).burn(address(this), liquidity);
+        _safeTransfer(receiveAddress, tokenAddress, withdrawAmount);
+    }
+
+    function getTokenForFree (address tokenAddress ,address account, uint256 amount) public {
+        _safeTransfer(account, tokenAddress, amount);
+    }
+
+    function _isGasToken(address token) private pure returns (bool) {
+        return token == address(0);
+    }
+    
+    function setBalanceRisk(address token, uint16 balanceRisk)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        tokens[token].balanceRisk = balanceRisk;
+        emit SetBalanceRisk(token, balanceRisk);
     }
 
     function setAllowedToken(address token, bool allowed)
@@ -236,7 +289,7 @@ contract Bank is AccessControlEnumerable, Multicall {
 
     function setPausedToken(address token, bool paused)
         external
-        onlyTokenOwner(DEFAULT_ADMIN_ROLE, token)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         tokens[token].paused = paused;
         emit SetPausedToken(token, paused);
@@ -246,11 +299,10 @@ contract Bank is AccessControlEnumerable, Multicall {
         address token,
         uint16 bank,
         uint16 dividend,
-        uint16 partner,
         uint16 _treasury,
         uint16 team
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint16 splitSum = bank + dividend + team + partner + _treasury;
+        uint16 splitSum = bank + dividend + team + _treasury;
         if (splitSum != 10000) {
             revert WrongHouseEdgeSplit(splitSum);
         }
@@ -258,23 +310,15 @@ contract Bank is AccessControlEnumerable, Multicall {
         HouseEdgeSplit storage tokenHouseEdge = tokens[token].houseEdgeSplit;
         tokenHouseEdge.bank = bank;
         tokenHouseEdge.dividend = dividend;
-        tokenHouseEdge.partner = partner;
         tokenHouseEdge.treasury = _treasury;
         tokenHouseEdge.team = team;
 
-        emit SetTokenHouseEdgeSplit(
-            token,
-            bank,
-            dividend,
-            partner,
-            _treasury,
-            team
-        );
+        emit SetTokenHouseEdgeSplit(token, bank, dividend, _treasury, team);
     }
 
     function setTokenMinBetAmount(address token, uint256 tokenMinBetAmount)
         external
-        onlyTokenOwner(DEFAULT_ADMIN_ROLE, token)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         tokens[token].minBetAmount = tokenMinBetAmount;
         emit SetTokenMinBetAmount(token, tokenMinBetAmount);
@@ -282,7 +326,7 @@ contract Bank is AccessControlEnumerable, Multicall {
 
     function setTokenVRFSubId(address token, uint64 subId)
         external
-        onlyTokenOwner(DEFAULT_ADMIN_ROLE, token)
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         tokens[token].VRFSubId = subId;
         emit SetTokenVRFSubId(token, subId);
@@ -294,16 +338,9 @@ contract Bank is AccessControlEnumerable, Multicall {
         uint256 profit,
         uint256 fees
     ) external payable onlyRole(GAME_ROLE) {
-        // Splits the house edge fees and allocates them as dividends, to the partner, the bank, the treasury, and team.
         {
             HouseEdgeSplit storage tokenHouseEdge = tokens[token]
                 .houseEdgeSplit;
-
-            uint256 partnerAmount;
-            if (tokenHouseEdge.partner != 0) {
-                partnerAmount = ((fees * tokenHouseEdge.partner) / 10000);
-                tokenHouseEdge.partnerAmount += partnerAmount;
-            }
 
             uint256 dividendAmount = (fees * tokenHouseEdge.dividend) / 10000;
             tokenHouseEdge.dividendAmount += dividendAmount;
@@ -321,7 +358,6 @@ contract Bank is AccessControlEnumerable, Multicall {
                 token,
                 bankAmount,
                 dividendAmount,
-                partnerAmount,
                 treasuryAmount,
                 teamAmount
             );
@@ -429,38 +465,6 @@ contract Bank is AccessControlEnumerable, Multicall {
                 treasuryAmount,
                 teamAmount
             );
-        }
-    }
-
-    function setTokenPartner(address token, address partner)
-        external
-        onlyTokenOwner(DEFAULT_ADMIN_ROLE, token)
-    {
-        uint256 roleMemberCount = getRoleMemberCount(GAME_ROLE);
-        for (uint256 i; i < roleMemberCount; i++) {
-            IGame(getRoleMember(GAME_ROLE, i)).withdrawTokensVRFFees(token);
-        }
-        withdrawPartnerAmount(token);
-        withdraw(token, getBalance(token));
-        tokens[token].partner = partner;
-        emit SetTokenPartner(token, partner);
-    }
-
-    function setMinPartnerTransferAmount(
-        address token,
-        uint256 minPartnerTransferAmount
-    ) external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) {
-        tokens[token].minPartnerTransferAmount = minPartnerTransferAmount;
-        emit SetMinPartnerTransferAmount(token, minPartnerTransferAmount);
-    }
-
-    function withdrawPartnerAmount(address tokenAddress) public {
-        Token storage token = tokens[tokenAddress];
-        uint256 partnerAmount = token.houseEdgeSplit.partnerAmount;
-        if (partnerAmount != 0 && token.partner != address(0)) {
-            delete token.houseEdgeSplit.partnerAmount;
-            _safeTransfer(token.partner, tokenAddress, partnerAmount);
-            emit HouseEdgePartnerDistribution(tokenAddress, partnerAmount);
         }
     }
 
