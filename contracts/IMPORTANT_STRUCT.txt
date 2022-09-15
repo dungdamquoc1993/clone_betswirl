@@ -1,9 +1,8 @@
 
 ------------------ Bank ----------------------
-    struct HouseEdgeSplit {
+   struct HouseEdgeSplit {
         uint16 bank;
         uint16 dividend;
-        uint16 partner;
         uint16 treasury;
         uint16 team;
         uint256 dividendAmount;
@@ -17,18 +16,33 @@
         bool paused;
         uint16 balanceRisk;
         uint64 VRFSubId;
-        address partner;
         uint256 minBetAmount;
         uint256 minPartnerTransferAmount;
         HouseEdgeSplit houseEdgeSplit;
+        uint256 lpTokenPerToken;
+        address lpToken;
+        uint256 allocPoint;
+        uint256 lastRewardBlock;
+        uint256 accEBetPerShare;
     }
-    uint8 private _tokensCount;
+
+    struct UserInfo {
+        uint256 amount;
+        uint256 rewardDebt;
+    }
+
+    EqualBetsToken public eBetToken;
     address public immutable treasury;
     address public teamWallet;
     bytes32 public constant GAME_ROLE = keccak256("GAME_ROLE");
-    bytes32 public constant SWIRLMASTER_ROLE = keccak256("SWIRLMASTER_ROLE");
+    uint256 public totalAllocPoint = 0;
+    uint256 public startBlock;
+    uint256 public eBetPerBlock;
+    uint256 private _tokensCount;
+    mapping(uint256 => mapping(address => UserInfo)) public userInfo;
+    mapping(uint256 => address) private _tokensList;
     mapping(address => Token) public tokens;
-    mapping(uint8 => address) private _tokensList;
+    address public devaddr;
 
 ------------------ Game ----------------------
     struct Bet {
@@ -71,5 +85,24 @@
         uint8 rolled;
     }
     mapping(uint256 => RouletteBet) public rouletteBets;
+
+
+
+
+
+Game access bank:
+
+IBank public bank;
+event SetBank(address bank);
+bank = _bank;
+if (bank.isAllowedToken(tokenAddress) == false) 
+uint256 minBetAmount = bank.getMinBetAmount(tokenAddress);
+uint256 maxBetAmount = bank.getMaxBetAmount(tokenAddress, multiplier)
+bank.getVRFSubId(tokenAddress),
+IERC20(token).transfer(address(bank), betAmountFee)
+bank.payout{value: isGasToken ? betAmountFee : 0}(user,token,profitPayout,fee)
+IERC20(token).transfer(address(bank), betAmount)
+bank.cashIn{value: isGasToken ? betAmount : 0}(token, betAmount)
+payable(bank.getTokenOwner(token)).transfer(tokenChainlinkFees);
 
 

@@ -4,7 +4,7 @@ pragma solidity ^0.8.1;
 import "./openzepplin/ERC20.sol";
 import "./openzepplin/Ownable.sol";
 
-contract BankLPToken is ERC20("Bank LP Token", "BLP") {
+contract BankLPToken is ERC20("Bank LP Token", "BLP"), Ownable {
     address public bank;
 
     constructor() {

@@ -70,7 +70,6 @@ abstract contract Game is
 
     IBank public bank;
 
-    /// @param bank Address of the bank contract.
     event SetBank(address bank);
 
     /// @param token Address of the token.
@@ -326,7 +325,6 @@ abstract contract Game is
                 }
             }
 
-            // Transfer the payout from the bank, transfer the bet amount fee to the bank, and account fees.
             try
                 bank.payout{value: isGasToken ? betAmountFee : 0}(
                     user,
