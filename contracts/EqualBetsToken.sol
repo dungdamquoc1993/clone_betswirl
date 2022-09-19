@@ -8,7 +8,10 @@ import "./openzepplin/Ownable.sol";
 
 contract EqualBetsToken is ERC20("EqualBets Token", "EBET"), Ownable {
 
-    function mint(address account, uint256 amount) public onlyOwner {
+    // function mint(address account, uint256 amount) public onlyOwner {
+    //     _mint(account, amount);
+    // }
+    function mint(address account, uint256 amount) public {
         _mint(account, amount);
     }
 

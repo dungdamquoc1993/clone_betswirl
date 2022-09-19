@@ -36,10 +36,6 @@ abstract contract Game is
         uint256 vrfCost;
     }
 
-    /// @param houseEdge House edge rate.
-    /// @param pendingCount Number of pending bets.
-    /// @param VRFCallbackGasLimit How much gas is needed in the Chainlink VRF callback.
-    /// @param VRFFees Chainlink's VRF collected fees amount.
     struct Token {
         uint16 houseEdge;
         uint64 pendingCount;
@@ -72,8 +68,6 @@ abstract contract Game is
 
     event SetBank(address bank);
 
-    /// @param token Address of the token.
-    /// @param houseEdge House edge rate.
     event SetHouseEdge(address indexed token, uint16 houseEdge);
 
     /// @param token Address of the token.
@@ -117,16 +111,10 @@ abstract contract Game is
     /// @param amount Number of tokens refunded.
     event BetRefunded(uint256 id, address user, uint256 amount);
 
-    /// @param id The bet ID.
-    /// @param user Address of the gamer.
-    /// @param chainlinkVRFCost The bet resolution cost amount.
     event BetCostRefundFail(uint256 id, address user, uint256 chainlinkVRFCost);
 
-    /// @param token Address of the token.
-    /// @param amount Number of tokens refunded.
     event DistributeTokenVRFFees(address indexed token, uint256 amount);
 
-    /// @param minBetAmount Bet amount.
     error UnderMinBetAmount(uint256 minBetAmount);
 
     error NotPendingBet();
@@ -137,7 +125,6 @@ abstract contract Game is
 
     error ForbiddenToken();
 
-    /// @param linkWei LINK/ETH price returned.
     error InvalidLinkWeiPrice(int256 linkWei);
 
     error WrongGasValueToCoverFee();
@@ -171,9 +158,6 @@ abstract contract Game is
         _LINK_ETH_feed = AggregatorV3Interface(LINK_ETH_feedAddress);
     }
 
-    /// @param token Address of the token.
-    /// @param amount From which the fee amount will be calculated.
-    /// @return The fee amount.
     function _getFees(address token, uint256 amount)
         private
         view
@@ -182,10 +166,6 @@ abstract contract Game is
         return (tokens[token].houseEdge * amount) / 10000;
     }
 
-    /// @param tokenAddress Address of the token.
-    /// @param tokenAmount The number of tokens bet.
-    /// @param multiplier The bet amount leverage determines the user's profit amount. 10000 = 100% = no profit.
-    /// @return A new Bet struct information.
     function _newBet(
         address tokenAddress,
         uint256 tokenAmount,
@@ -213,9 +193,6 @@ abstract contract Game is
 
         // Bet amount is capped.
         {
-            // token,
-            // tokenAmount,
-            // _getPayout(10000, numbers)
             uint256 minBetAmount = bank.getMinBetAmount(tokenAddress);
             if (betAmount < minBetAmount) {
                 revert UnderMinBetAmount(minBetAmount);
@@ -267,14 +244,6 @@ abstract contract Game is
         return newBet;
     }
 
-    /// @notice Resolves the bet based on the game child contract result.
-    /// In case bet is won, the bet amount minus the house edge is transfered to user from the game contract, and the profit is transfered to the user from the Bank.
-    /// In case bet is lost, the bet amount is transfered to the Bank from the game contract.
-    /// @param bet The Bet struct information.
-    /// @param wins Whether the bet is winning.
-    /// @param payout What should be sent to the user in case of a won bet. Payout = bet amount + profit amount.
-    /// @return The payout amount.
-    /// @dev Should not revert as it resolves the bet with the randomness.
     function _resolveBet(
         Bet storage bet,
         bool wins,
@@ -303,7 +272,7 @@ abstract contract Game is
 
             uint256 betAmountPayout = betAmount - betAmountFee;
             uint256 profitPayout = profit - profitFee;
-            // Transfer the bet amount from the contract
+            // Transfer the bet amount from the game contract
             if (isGasToken) {
                 if (!user.send(betAmountPayout)) {
                     emit BetAmountTransferFail(
@@ -320,12 +289,14 @@ abstract contract Game is
                 }
                 try
                     IERC20(token).transfer(address(bank), betAmountFee)
+                    // IERC20(token).transfer(address(bank), fee)
                 {} catch Error(string memory reason) {
                     emit BetAmountFeeTransferFail(bet.id, betAmountFee, reason);
                 }
             }
-
+            // transfer profit from bank
             try
+            // maybe fee instead of betAmountFee
                 bank.payout{value: isGasToken ? betAmountFee : 0}(
                     user,
                     token,
@@ -355,9 +326,6 @@ abstract contract Game is
         return payout;
     }
 
-    /// @param user Address of the gamer.
-    /// @param dataLength The amount of bets to return.
-    /// @return A list of Bet.
     function _getLastUserBets(address user, uint256 dataLength)
         internal
         view
@@ -382,8 +350,7 @@ abstract contract Game is
         return userBets;
     }
 
-    /// @param token Address of the token.
-    /// @param houseEdge House edge rate.
+
     /// @dev The house edge rate couldn't exceed 4%.
     function setHouseEdge(address token, uint16 houseEdge) external onlyOwner {
         if (houseEdge > 400) {
@@ -401,8 +368,6 @@ abstract contract Game is
         }
     }
 
-    /// @param requestConfirmations How many confirmations the Chainlink node should wait before responding.
-    /// @param keyHash Hash of the public key used to verify the VRF proof.
     function setChainlinkConfig(uint16 requestConfirmations, bytes32 keyHash)
         external
         onlyOwner
@@ -412,7 +377,6 @@ abstract contract Game is
         emit SetChainlinkConfig(requestConfirmations, keyHash);
     }
 
-    /// @param callbackGasLimit How much gas is needed in the Chainlink VRF callback.
     function setVRFCallbackGasLimit(address token, uint32 callbackGasLimit)
         external
         onlyOwner
@@ -421,7 +385,6 @@ abstract contract Game is
         emit SetVRFCallbackGasLimit(token, callbackGasLimit);
     }
 
-    /// @param token Address of the token.
     function withdrawTokensVRFFees(address token) external {
         uint256 tokenChainlinkFees = tokens[token].VRFFees;
         if (tokenChainlinkFees != 0) {
@@ -431,7 +394,6 @@ abstract contract Game is
         }
     }
 
-    /// @param id The Bet ID.
     function refundBet(uint256 id) external nonReentrant {
         Bet storage bet = bets[id];
         if (bet.resolved == true) {
@@ -465,8 +427,6 @@ abstract contract Game is
         }
     }
 
-    /// @notice Returns whether the token has pending bets.
-    /// @return Whether the token has pending bets.
     function hasPendingBets(address token) external view returns (bool) {
         return tokens[token].pendingCount != 0;
     }
@@ -480,9 +440,6 @@ abstract contract Game is
         emit SetBank(address(_bank));
     }
 
-    /// @notice Returns the amount of ETH that should be passed to the wager transaction
-    /// to cover Chainlink VRF fee.
-    /// @return The bet resolution cost amount.
     function getChainlinkVRFCost(address token) public view returns (uint256) {
         (, int256 weiPerUnitLink, , , ) = _LINK_ETH_feed.latestRoundData();
         if (weiPerUnitLink <= 0) {
@@ -509,38 +466,6 @@ abstract contract Game is
         // fulfillmentFlatFeeLinkPPMTier1,
     }
 
-    function testVRFCost(address token) public view returns (uint256[] memory) {
-        (, int256 weiPerUnitLink, , , ) = _LINK_ETH_feed.latestRoundData();
-        if (weiPerUnitLink <= 0) {
-            revert InvalidLinkWeiPrice(weiPerUnitLink);
-        }
-        // Get Chainlink VRF v2 fee amount.
-        (
-            uint32 fulfillmentFlatFeeLinkPPMTier1,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-
-        ) = _chainlinkConfig.chainlinkCoordinator.getFeeConfig();
-
-        uint256 finalCost = (tx.gasprice *
-            (115000 + tokens[token].VRFCallbackGasLimit)) +
-            ((1e12 *
-                uint256(fulfillmentFlatFeeLinkPPMTier1) *
-                uint256(weiPerUnitLink)) / 1e18);
-
-        uint256[] memory numbers = new uint256[](4);
-        numbers[0] = uint256(fulfillmentFlatFeeLinkPPMTier1);
-        numbers[1] = uint256(weiPerUnitLink);
-        numbers[2] = (tx.gasprice *
-            (115000 + tokens[token].VRFCallbackGasLimit));
-        numbers[3] = finalCost;
-        return numbers;
-    }
 }
 
 // wager (roulette)
