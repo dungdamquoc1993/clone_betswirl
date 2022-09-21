@@ -46,7 +46,7 @@ contract Bank is AccessControlEnumerable {
         Token token;
     }
 
-    struct UserInfo {
+    struct PartnerInfo {
         uint256 amountOfLp;
         uint256 rewardDebt;
     }
@@ -67,7 +67,9 @@ contract Bank is AccessControlEnumerable {
 
     uint256 private _tokensCount;
 
-    mapping(uint256 => mapping(address => UserInfo)) public userInfo;
+    mapping(uint256 => mapping(address => PartnerInfo)) public partnerInfo;
+
+    address[] public partnerAddresses;
 
     mapping(uint256 => address) private _tokensList;
 
@@ -87,12 +89,12 @@ contract Bank is AccessControlEnumerable {
 
     event Deposit(
         uint256 indexed pid,
-        address user,
+        address partner,
         uint256 amount,
         uint256 lpMintAmount
     );
 
-    event Withdraw(uint256 indexed pid, address user, uint256 amount);
+    event Withdraw(uint256 indexed pid, address partner, uint256 amount);
 
     event SetTokenHouseEdgeSplit(
         address indexed token,
@@ -181,53 +183,6 @@ contract Bank is AccessControlEnumerable {
         }
     }
 
-    function _isGasToken(address token) private pure returns (bool) {
-        return token == address(0);
-    }
-
-    function setDevAddress(address _devAddr)
-        public
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        require(_devAddr != address(0), "dev address is invalid");
-        devaddr = _devAddr;
-    }
-
-    function setAllocPoint(
-        uint256 _pid,
-        uint256 _allocPoint,
-        bool _withUpdate
-    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_withUpdate) {
-            // massUpdatePools();
-        }
-        address tokenAddress = _tokensList[_pid];
-        Token storage token = tokens[tokenAddress];
-        uint256 prevAllocPoint = token.allocPoint;
-        token.allocPoint = _allocPoint;
-        if (prevAllocPoint != _allocPoint) {
-            totalAllocPoint = totalAllocPoint - prevAllocPoint + _allocPoint;
-        }
-        emit SetAllocPoint(tokenAddress, _allocPoint, totalAllocPoint);
-    }
-
-    function updatePriceOfToken(address tokenAddress) internal {
-        Token storage token = tokens[tokenAddress];
-        uint256 totalLpBalance = IBankLPToken(token.lpToken).totalSupply();
-        uint256 bankTokenBalance = getBalance(tokenAddress);
-
-        token.priceOfToken = bankTokenBalance > 0 && totalLpBalance > 0
-            ? (totalLpBalance * 1e18) / bankTokenBalance
-            : token.priceOfToken;
-        emit UpdatePriceOfToken(tokenAddress, token.priceOfToken);
-    }
-
-    function getPriceOfToken(uint256 _pid) public view returns (uint256) {
-        address tokenAddress = _tokensList[_pid];
-        Token storage token = tokens[tokenAddress];
-        return token.priceOfToken;
-    }
-
     function addToken(
         address token,
         uint256 _allocPoint,
@@ -264,6 +219,17 @@ contract Bank is AccessControlEnumerable {
         emit AddToken(token);
     }
 
+    function updatePriceOfToken(address tokenAddress) private {
+        Token storage token = tokens[tokenAddress];
+        uint256 totalLpBalance = IBankLPToken(token.lpToken).totalSupply();
+        uint256 bankTokenBalance = getBalance(tokenAddress);
+
+        token.priceOfToken = bankTokenBalance > 0 && totalLpBalance > 0
+            ? (totalLpBalance * 1e18) / bankTokenBalance
+            : token.priceOfToken;
+        emit UpdatePriceOfToken(tokenAddress, token.priceOfToken);
+    }
+
     // update accEBetPerLpToken, lastRewardBlock
     function updateToken(uint256 _pid) public payable {
         address tokenAddress = _tokensList[_pid];
@@ -291,18 +257,24 @@ contract Bank is AccessControlEnumerable {
     function deposit(uint256 _pid, uint256 _amount) external payable lock {
         address tokenAddress = _tokensList[_pid];
         Token storage token = tokens[tokenAddress];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
+        PartnerInfo storage partner = partnerInfo[_pid][_msgSender()];
+
+        if (!exists(_msgSender(), partnerAddresses)) {
+            partnerAddresses.push(_msgSender());
+        }
 
         updateToken(_pid); // update accEBetPerLpToken
-        if (user.amountOfLp > 0) {
-            uint256 pendingReward = ((user.amountOfLp *
-                token.accEBetPerLpToken) / 1e18) - user.rewardDebt;
+        if (partner.amountOfLp > 0) {
+            uint256 pendingReward = ((partner.amountOfLp *
+                token.accEBetPerLpToken) / 1e18) - partner.rewardDebt;
             if (pendingReward > 0) {
                 _safeEBetTransfer(_msgSender(), pendingReward);
             }
         }
 
-        user.rewardDebt = (user.amountOfLp * token.accEBetPerLpToken) / 1e18;
+        partner.rewardDebt =
+            (partner.amountOfLp * token.accEBetPerLpToken) /
+            1e18;
 
         if (!_isGasToken(tokenAddress)) {
             IERC20(tokenAddress).safeTransferFrom(
@@ -316,7 +288,7 @@ contract Bank is AccessControlEnumerable {
 
         uint256 lpMintAmount = (_amount * token.priceOfToken) / 1e18;
         IBankLPToken(token.lpToken).mint(_msgSender(), lpMintAmount);
-        user.amountOfLp = user.amountOfLp + lpMintAmount;
+        partner.amountOfLp = partner.amountOfLp + lpMintAmount;
 
         updatePriceOfToken(tokenAddress); // update token.priceOfToken need totalToken and totalLP to update correctly
 
@@ -330,14 +302,25 @@ contract Bank is AccessControlEnumerable {
     ) public payable lock {
         address tokenAddress = _tokensList[_pid];
         Token storage token = tokens[tokenAddress];
-        UserInfo storage user = userInfo[_pid][_msgSender()];
+        PartnerInfo storage partner = partnerInfo[_pid][_msgSender()];
+        
+        if (!token.paused) {
+            revert TokenNotPaused();
+        }
+
+        uint256 roleMemberCount = getRoleMemberCount(GAME_ROLE);
+        for (uint256 i; i < roleMemberCount; i++) {
+            if (IGame(getRoleMember(GAME_ROLE, i)).hasPendingBets(tokenAddress)) {
+                revert TokenHasPendingBets();
+            }
+        }
 
         updateToken(_pid); // update accEBetPerLpToken
         uint256 userLpBalance = IBankLPToken(token.lpToken).balanceOf(
             _msgSender()
         );
         require(
-            lpAmount <= userLpBalance && lpAmount <= user.amountOfLp,
+            lpAmount <= userLpBalance && lpAmount <= partner.amountOfLp,
             "INSUFFICIENT_LIQUIDITY_TO_WITHDRAW"
         );
 
@@ -349,23 +332,38 @@ contract Bank is AccessControlEnumerable {
 
         uint256 withdrawAmount = (lpAmount * 1e18) / token.priceOfToken;
         uint256 bankTokenBalance = getBalance(tokenAddress);
-
-        require(
+        require( // 0.01% slipage
             bankTokenBalance >= withdrawAmount,
             "bank balance insufficient"
         );
 
-        uint256 pendingReward = ((user.amountOfLp * token.accEBetPerLpToken) /
-            1e18) - user.rewardDebt;
+        uint256 pendingReward = ((partner.amountOfLp *
+            token.accEBetPerLpToken) / 1e18) - partner.rewardDebt;
         if (pendingReward > 0) {
             _safeEBetTransfer(_msgSender(), pendingReward);
         }
+
+        partner.rewardDebt =
+            (partner.amountOfLp * token.accEBetPerLpToken) /
+            1e18;
+
         if (withdrawAmount > 0) {
-            user.amountOfLp = user.amountOfLp - lpAmount;
+            partner.amountOfLp = partner.amountOfLp - lpAmount;
             IBankLPToken(token.lpToken).burn(address(this), lpAmount);
             _safeTransfer(_msgSender(), tokenAddress, withdrawAmount);
         }
-        user.rewardDebt = (user.amountOfLp * token.accEBetPerLpToken) / 1e18;
+
+        if (exists(_msgSender(), partnerAddresses) && partner.amountOfLp == 0) {
+            // delete partner from list partner address
+            for (uint256 i = 0; i < partnerAddresses.length; i++) {
+                if (partnerAddresses[i] == _msgSender()) {
+                    partnerAddresses[i] = partnerAddresses[
+                        partnerAddresses.length - 1
+                    ];
+                    partnerAddresses.pop();
+                }
+            }
+        }
 
         updatePriceOfToken(tokenAddress); // update token.priceOfToken need totalToken and totalLP to update correctly
 
@@ -375,15 +373,125 @@ contract Bank is AccessControlEnumerable {
     function claimReward(uint256 _pid, address userAddress) public lock {
         address tokenAddress = _tokensList[_pid];
         Token storage token = tokens[tokenAddress];
-        UserInfo storage user = userInfo[_pid][userAddress];
+        PartnerInfo storage partner = partnerInfo[_pid][userAddress];
         updateToken(_pid); // update token.accEBetPerLpToken
 
-        uint256 pendingReward = ((user.amountOfLp * token.accEBetPerLpToken) /
-            1e18) - user.rewardDebt;
+        uint256 pendingReward = ((partner.amountOfLp *
+            token.accEBetPerLpToken) / 1e18) - partner.rewardDebt;
         if (pendingReward > 0) {
             _safeEBetTransfer(userAddress, pendingReward);
         }
-        user.rewardDebt = (user.amountOfLp * token.accEBetPerLpToken) / 1e18;
+        partner.rewardDebt =
+            (partner.amountOfLp * token.accEBetPerLpToken) /
+            1e18;
+    }
+
+    function _allocateHouseEdge(address token, uint256 fees) private {
+        HouseEdgeSplit storage tokenHouseEdge = tokens[token].houseEdgeSplit;
+
+        uint256 teamAmount = (fees * tokenHouseEdge.team) / 10000;
+        tokenHouseEdge.teamAmount += teamAmount; // 50%
+
+        uint256 dividendAmount = (fees * tokenHouseEdge.dividend) / 10000;
+        tokenHouseEdge.dividendAmount += dividendAmount; // 50%
+        emit AllocateHouseEdgeAmount(token, dividendAmount, teamAmount);
+    }
+
+    // onlyRole(GAME_ROLE)
+    function payout(
+        address payable user,
+        uint256 _pid,
+        uint256 _profit,
+        uint256 fees
+    ) external payable {
+        // when user win betamount will be send by Game contract
+        // profitamount will be send by bank
+        // profitfee will keep in bank contract
+        address tokenAddress = _tokensList[_pid];
+        _allocateHouseEdge(tokenAddress, fees);
+
+        _safeTransfer(user, tokenAddress, _profit);
+        updatePriceOfToken(tokenAddress);
+
+        emit Payout(tokenAddress, getBalance(tokenAddress), _profit);
+    }
+
+    // onlyRole(GAME_ROLE)
+    function cashIn(
+        uint256 _pid,
+        uint256 amount,
+        uint256 fees
+    ) external payable {
+        address tokenAddress = _tokensList[_pid];
+        _allocateHouseEdge(tokenAddress, fees);
+        updatePriceOfToken(tokenAddress);
+        emit CashIn(
+            tokenAddress,
+            getBalance(tokenAddress),
+            _isGasToken(tokenAddress) ? msg.value : amount
+        );
+    }
+
+    function withdrawDividend(uint256 _pid) public {
+        address tokenAddress = _tokensList[_pid];
+        Token storage token = tokens[tokenAddress];
+        HouseEdgeSplit storage tokenHouseEdge = token.houseEdgeSplit;
+        uint256 dividendAmount = tokenHouseEdge.dividendAmount;
+        uint256 totalLpSupply = IBankLPToken(token.lpToken).totalSupply();
+        for (uint256 i = 0; i < partnerAddresses.length; i++) {
+            address partnerAddress = partnerAddresses[i];
+            PartnerInfo storage partner = partnerInfo[_pid][partnerAddress];
+            uint256 partnerLpBalance = partner.amountOfLp;
+
+            uint256 withdrawAmount = (dividendAmount * partnerLpBalance) /
+                totalLpSupply;
+            _safeTransfer(partnerAddress, tokenAddress, withdrawAmount);
+        }
+        delete tokenHouseEdge.dividendAmount;
+
+        emit WithdrawDividend(_msgSender(), tokenAddress, dividendAmount);
+    }
+
+    function withdrawTeamAmount(uint256 _pid) public {
+        address tokenAddress = _tokensList[_pid];
+        Token storage token = tokens[tokenAddress];
+        HouseEdgeSplit storage tokenHouseEdge = token.houseEdgeSplit;
+        uint256 teamAmount = tokenHouseEdge.teamAmount;
+
+        _safeTransfer(devaddr, tokenAddress, teamAmount);
+        delete tokenHouseEdge.teamAmount;
+
+        emit WithdrawTeamAmount(devaddr, tokenAddress, teamAmount);
+    }
+
+    function _isGasToken(address token) private pure returns (bool) {
+        return token == address(0);
+    }
+
+    function setDevAddress(address _devAddr)
+        public
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(_devAddr != address(0), "dev address is invalid");
+        devaddr = _devAddr;
+    }
+
+    function setAllocPoint(
+        uint256 _pid,
+        uint256 _allocPoint,
+        bool _withUpdate
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_withUpdate) {
+            // massUpdatePools();
+        }
+        address tokenAddress = _tokensList[_pid];
+        Token storage token = tokens[tokenAddress];
+        uint256 prevAllocPoint = token.allocPoint;
+        token.allocPoint = _allocPoint;
+        if (prevAllocPoint != _allocPoint) {
+            totalAllocPoint = totalAllocPoint - prevAllocPoint + _allocPoint;
+        }
+        emit SetAllocPoint(tokenAddress, _allocPoint, totalAllocPoint);
     }
 
     function setBalanceRisk(address token, uint16 balanceRisk)
@@ -435,111 +543,10 @@ contract Bank is AccessControlEnumerable {
         emit SetTokenVRFSubId(token, subId);
     }
 
-    function _allocateHouseEdge(address token, uint256 fees) private {
-        HouseEdgeSplit storage tokenHouseEdge = tokens[token].houseEdgeSplit;
-
-        uint256 teamAmount = (fees * tokenHouseEdge.team) / 10000;
-        tokenHouseEdge.teamAmount += teamAmount; // 50%
-
-        uint256 dividendAmount = (fees * tokenHouseEdge.dividend) / 10000;
-        tokenHouseEdge.dividendAmount += dividendAmount; // 50%
-
-        emit AllocateHouseEdgeAmount(
-            token,
-            dividendAmount,
-            teamAmount
-        );
-    }
-
-    function payout(
-        address payable user,
-        uint256 _pid,
-        uint256 _profit,
-        uint256 fees
-    ) external payable onlyRole(GAME_ROLE) {
-        // when user win betamount will be send by Game contract
-        // profitamount will be send by bank
-        // profitfee will keep in bank contract
-        address tokenAddress = _tokensList[_pid];
-        _allocateHouseEdge(tokenAddress, fees);
-
-        // transfer profit to user and update price of token
-        _safeTransfer(user, tokenAddress, _profit);
-        updatePriceOfToken(tokenAddress);
-
-        emit Payout(tokenAddress, getBalance(tokenAddress), _profit);
-    }
-
-    function cashIn(
-        uint256 _pid,
-        uint256 amount,
-        uint256 fees
-    ) external payable onlyRole(GAME_ROLE) {
-        address tokenAddress = _tokensList[_pid];
-        _allocateHouseEdge(tokenAddress, fees);
-        updatePriceOfToken(tokenAddress);
-        emit CashIn(
-            tokenAddress,
-            getBalance(tokenAddress),
-            _isGasToken(tokenAddress) ? msg.value : amount
-        );
-    }
-
-    function withdrawDividend(uint256 _pid) public {
+    function getPriceOfToken(uint256 _pid) public view returns (uint256) {
         address tokenAddress = _tokensList[_pid];
         Token storage token = tokens[tokenAddress];
-        HouseEdgeSplit storage tokenHouseEdge = token.houseEdgeSplit;
-        
-        uint256 dividendAmount = tokenHouseEdge.dividendAmount;
-        uint256 userLpBalance = IBankLPToken(token.lpToken).balanceOf(_msgSender());
-        uint256 totalLpSupply = IBankLPToken(token.lpToken).totalSupply();
-        
-        uint256 withdrawAmount = (dividendAmount * userLpBalance) /
-            totalLpSupply;
-
-        tokenHouseEdge.dividendAmount -= withdrawAmount;
-        _safeTransfer(_msgSender(), tokenAddress, withdrawAmount);
-
-        emit WithdrawDividend(_msgSender(), tokenAddress, withdrawAmount);
-    }
-
-    function withdrawTeamAmount(uint256 _pid) public {
-        address tokenAddress = _tokensList[_pid];
-        Token storage token = tokens[tokenAddress];
-        HouseEdgeSplit storage tokenHouseEdge = token.houseEdgeSplit;
-        uint256 teamAmount = tokenHouseEdge.teamAmount;
-
-        delete tokenHouseEdge.teamAmount;
-        _safeTransfer(devaddr, tokenAddress, teamAmount);
-
-        emit WithdrawTeamAmount(devaddr, tokenAddress, teamAmount);
-    }
-
-    function getTokens() external view returns (TokenMetadata[] memory) {
-        TokenMetadata[] memory _tokens = new TokenMetadata[](_tokensCount);
-        for (uint8 i; i < _tokensCount; i++) {
-            address tokenAddress = _tokensList[i];
-            Token memory token = tokens[tokenAddress];
-            if (_isGasToken(tokenAddress)) {
-                _tokens[i] = TokenMetadata({
-                    decimals: 18,
-                    tokenAddress: tokenAddress,
-                    name: "ETH",
-                    symbol: "ETH",
-                    token: token
-                });
-            } else {
-                IERC20Metadata erc20Metadata = IERC20Metadata(tokenAddress);
-                _tokens[i] = TokenMetadata({
-                    decimals: erc20Metadata.decimals(),
-                    tokenAddress: tokenAddress,
-                    name: erc20Metadata.name(),
-                    symbol: erc20Metadata.symbol(),
-                    token: token
-                });
-            }
-        }
-        return _tokens;
+        return token.priceOfToken;
     }
 
     function getMaxBetAmount(address token, uint256 multiplier)
@@ -548,11 +555,6 @@ contract Bank is AccessControlEnumerable {
         returns (uint256)
     {
         return (getBalance(token) * tokens[token].balanceRisk) / multiplier;
-    }
-
-    function isAllowedToken(address tokenAddress) external view returns (bool) {
-        Token memory token = tokens[tokenAddress];
-        return token.allowed && !token.paused;
     }
 
     function getVRFSubId(address token) external view returns (uint64) {
@@ -595,6 +597,33 @@ contract Bank is AccessControlEnumerable {
         );
     }
 
+    function getTokens() external view returns (TokenMetadata[] memory) {
+        TokenMetadata[] memory _tokens = new TokenMetadata[](_tokensCount);
+        for (uint8 i; i < _tokensCount; i++) {
+            address tokenAddress = _tokensList[i];
+            Token memory token = tokens[tokenAddress];
+            if (_isGasToken(tokenAddress)) {
+                _tokens[i] = TokenMetadata({
+                    decimals: 18,
+                    tokenAddress: tokenAddress,
+                    name: "ETH",
+                    symbol: "ETH",
+                    token: token
+                });
+            } else {
+                IERC20Metadata erc20Metadata = IERC20Metadata(tokenAddress);
+                _tokens[i] = TokenMetadata({
+                    decimals: erc20Metadata.decimals(),
+                    tokenAddress: tokenAddress,
+                    name: erc20Metadata.name(),
+                    symbol: erc20Metadata.symbol(),
+                    token: token
+                });
+            }
+        }
+        return _tokens;
+    }
+
     function getMultiplier(uint256 _from, uint256 _to)
         public
         pure
@@ -602,39 +631,22 @@ contract Bank is AccessControlEnumerable {
     {
         return _to - _from;
     }
+
+    function exists(address checkAddress, address[] memory addresses)
+        public
+        pure
+        returns (bool)
+    {
+        for (uint256 i = 0; i < addresses.length; i++) {
+            if (addresses[i] == checkAddress) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function isAllowedToken(address tokenAddress) external view returns (bool) {
+        Token memory token = tokens[tokenAddress];
+        return token.allowed && !token.paused;
+    }
 }
-
-// ROLE require
-// Deposit => 						external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// Withdrawn => 					public onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-
-// addToken => 					    external onlyRole(DEFAULT_ADMIN_ROLE)
-
-// setAllowedToken => 				external onlyRole(DEFAULT_ADMIN_ROLE)
-// setPausedToken => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) false
-// setBalanceRisk => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 2
-// setTokenVRFSubId => 			    external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// setTokenPartner => 				external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// setTokenMinBetAmount => 	    	external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender)
-// setMinPartnerTransferAmount =>  external onlyTokenOwner(DEFAULT_ADMIN_ROLE, token) => _checkRole(DEFAULT_ADMIN_ROLE, sender) 2
-
-// setHouseEdgeSplit => 			external onlyRole(DEFAULT_ADMIN_ROLE)
-
-// payout => 						external onlyRole(GAME_ROLE)
-// cashIn => 						external onlyRole(GAME_ROLE)
-// harvest => 						external onlyRole(SWIRLMASTER_ROLE)
-
-// _safeTransfer => private noRole
-// _isGasToken => private noRole
-// getTokens => external noRole
-// getMinBetAmount => external noRole
-// getMaxBetAmount => external noRole
-// getVRFSubId => external noRole
-// getTokenOwner => external noRole
-
-// withdrawHouseEdgeAmount => public noRole
-// withdrawPartnerAmount => public noRole
-// getBalance => public noRole
-
-// performUpkeep => external noRole
-// checkUpkeep => external noRole (Chainlink)

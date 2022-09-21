@@ -52,6 +52,7 @@ describe("apply new casino model", () => {
     await bankContract.addToken(GAS_TOKEN_ADDRESS, 1000, parseUnits("10", 18));
     await bankContract.setAllowedToken(GAS_TOKEN_ADDRESS, true);
     await bankContract.setPausedToken(GAS_TOKEN_ADDRESS, false);
+    await bankContract.setHouseEdgeSplit(GAS_TOKEN_ADDRESS, 5000, 5000)
     const BankLPTokenOfGasAddress = await bankContract.getLpTokenAddress(
       bankContract.address,
       GAS_TOKEN_ADDRESS
@@ -71,48 +72,16 @@ describe("apply new casino model", () => {
   });
 
   it("test deposit and withdraw check LP balacnce", async () => {
-    await bankContract.addToken(
-      equalBetTokenContract.address,
-      0,
-      parseUnits("1", 18)
-    );
-    await equalBetTokenContract.mint(b1.address, parseUnits("100", 18));
-    await equalBetTokenContract.mint(b2.address, parseUnits("100", 18));
-    await equalBetTokenContract.mint(b3.address, parseUnits("100", 18));
-    await equalBetTokenContract
-      .connect(b1)
-      .approve(bankContract.address, parseUnits("100", 18));
-    await equalBetTokenContract
-      .connect(b2)
-      .approve(bankContract.address, parseUnits("100", 18));
-    await equalBetTokenContract
-      .connect(b3)
-      .approve(bankContract.address, parseUnits("100", 18));
-
-    await bankContract.connect(b1).deposit(1, parseUnits("10", 18));
-    await bankContract.connect(b2).deposit(1, parseUnits("10", 18));
-    await bankContract.connect(b3).deposit(1, parseUnits("10", 18));
+    await bankContract.connect(b1).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
+    await bankContract.connect(b2).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
+    await bankContract.connect(b3).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
     
+    await bankContract.connect(b1).cashIn(0, parseUnits("90", 18), parseUnits("10", 18), {value: parseUnits("100", 18)})
+    await bankContract.withdrawDividend(0)
     await skipBlock(100)
+    // await bankContract.withdrawTeamAmount(0);
+    await showUser("b0", b0.address)
     
-    await contractBankLPTokenOfERC20.connect(b1).approve(bankContract.address, parseUnits("100", 18))
-    await contractBankLPTokenOfERC20.connect(b2).approve(bankContract.address, parseUnits("100", 18))
-    await contractBankLPTokenOfERC20.connect(b3).approve(bankContract.address, parseUnits("100", 18))
-    
-    await bankContract.connect(b1).withdraw(1, parseUnits("10", 18))
-    await bankContract.connect(b2).withdraw(1, parseUnits("10", 18))
-    await bankContract.connect(b3).withdraw(1, parseUnits("10", 18))
-
-
-    await showUser("b1", b1.address);
-    console.log()
-    await showUser("b2", b2.address);
-    console.log()
-    await showUser("b3", b3.address);
-    console.log()
-    console.log(
-      (await equalBetTokenContract.balanceOf(bankContract.address)) / 1e18
-    );
 
     async function showUser(userName: string, userAddress: string) {
       console.log(
@@ -127,7 +96,7 @@ describe("apply new casino model", () => {
       );
       console.log(
         `${userName}, bank LP Token amount: `,
-        (await contractBankLPTokenOfERC20.balanceOf(userAddress)) / 1e18
+        (await contractBankLPTokenOfGasToken.balanceOf(userAddress)) / 1e18
       );
     }
     async function skipBlock(blocks: number) {
