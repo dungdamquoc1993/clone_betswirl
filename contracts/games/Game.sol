@@ -289,14 +289,16 @@ abstract contract Game is
                 }
                 try
                     IERC20(token).transfer(address(bank), betAmountFee)
-                    // IERC20(token).transfer(address(bank), fee)
-                {} catch Error(string memory reason) {
+                // IERC20(token).transfer(address(bank), fee)
+                {
+
+                } catch Error(string memory reason) {
                     emit BetAmountFeeTransferFail(bet.id, betAmountFee, reason);
                 }
             }
             // transfer profit from bank
             try
-            // maybe fee instead of betAmountFee
+                // maybe fee instead of betAmountFee
                 bank.payout{value: isGasToken ? betAmountFee : 0}(
                     user,
                     token,
@@ -349,7 +351,6 @@ abstract contract Game is
 
         return userBets;
     }
-
 
     /// @dev The house edge rate couldn't exceed 4%.
     function setHouseEdge(address token, uint16 houseEdge) external onlyOwner {
@@ -465,7 +466,6 @@ abstract contract Game is
                 uint256(weiPerUnitLink)) / 1e18);
         // fulfillmentFlatFeeLinkPPMTier1,
     }
-
 }
 
 // wager (roulette)

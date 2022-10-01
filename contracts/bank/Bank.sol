@@ -65,11 +65,11 @@ contract Bank is AccessControlEnumerable {
 
     uint256 public eBetPerBlock;
 
-    uint256 private _tokensCount;
-
     mapping(uint256 => mapping(address => PartnerInfo)) public partnerInfo;
 
     address[] public partnerAddresses;
+
+    uint256 private _tokensCount;
 
     mapping(uint256 => address) private _tokensList;
 
@@ -303,7 +303,7 @@ contract Bank is AccessControlEnumerable {
         address tokenAddress = _tokensList[_pid];
         Token storage token = tokens[tokenAddress];
         PartnerInfo storage partner = partnerInfo[_pid][_msgSender()];
-        
+
         if (!token.paused) {
             revert TokenNotPaused();
         }

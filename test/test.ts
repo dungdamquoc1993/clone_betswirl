@@ -52,7 +52,7 @@ describe("apply new casino model", () => {
     await bankContract.addToken(GAS_TOKEN_ADDRESS, 1000, parseUnits("10", 18));
     await bankContract.setAllowedToken(GAS_TOKEN_ADDRESS, true);
     await bankContract.setPausedToken(GAS_TOKEN_ADDRESS, false);
-    await bankContract.setHouseEdgeSplit(GAS_TOKEN_ADDRESS, 5000, 5000)
+    await bankContract.setHouseEdgeSplit(GAS_TOKEN_ADDRESS, 5000, 5000);
     const BankLPTokenOfGasAddress = await bankContract.getLpTokenAddress(
       bankContract.address,
       GAS_TOKEN_ADDRESS
@@ -70,39 +70,59 @@ describe("apply new casino model", () => {
       BankLPTokenOfEbetAddress
     );
   });
-
-  it("test deposit and withdraw check LP balacnce", async () => {
-    await bankContract.connect(b1).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
-    await bankContract.connect(b2).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
-    await bankContract.connect(b3).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
-    
-    await bankContract.connect(b1).cashIn(0, parseUnits("90", 18), parseUnits("10", 18), {value: parseUnits("100", 18)})
-    await bankContract.withdrawDividend(0)
-    await skipBlock(100)
-    // await bankContract.withdrawTeamAmount(0);
-    await showUser("b0", b0.address)
-    
-
-    async function showUser(userName: string, userAddress: string) {
-      console.log(
-        `${userName}, eth balance: `,
-        parseFloat((await provider.getBalance(userAddress)).toString()) / 1e18
-      );
-      console.log(
-        `${userName}, EBet balance: `,
-        parseFloat(
-          (await equalBetTokenContract.balanceOf(userAddress)).toString()
-        ) / 1e18
-      );
-      console.log(
-        `${userName}, bank LP Token amount: `,
-        (await contractBankLPTokenOfGasToken.balanceOf(userAddress)) / 1e18
-      );
-    }
-    async function skipBlock(blocks: number) {
-      for (let i = 0; i < blocks; i++) {
-        await bankContract.setAllowedToken(GAS_TOKEN_ADDRESS, true);
-      }
-    }
+  it("test time stamp", async () => {
+    const equalBetCasFactory = await ethers.getContractFactory("EqualBets");
+    const equalBetContract = await equalBetCasFactory.deploy(
+      "0x326C977E6efc84E512bB9C30f76E30c160eD06FB",
+      "0xB9756312523826A566e222a34793E414A81c88E1",
+      "0x3662303964333762323834663436353562623531306634393465646331313166",
+      "0xB9756312523826A566e222a34793E414A81c88E1"
+    );
+    await equalBetContract.testFulfillGamesCreate(
+      ["0x3100000000000000000000000000000000000000000000000000000000000000"],
+      [1000],
+      ["hn"],
+      ["hcm"]
+    );
+    console.log(await equalBetContract.getGameCreate("0x3100000000000000000000000000000000000000000000000000000000000000"))
+    // bytes32 _requestId,
+    //     bytes32[] memory _gameIds,
+    //     uint256[] memory _startTime,
+    //     string[] memory _homeTeam,
+    //     string[] memory _awayTeam
   });
+
+  // it("test deposit and withdraw check LP balacnce", async () => {
+  //   await bankContract.connect(b1).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
+  //   await bankContract.connect(b2).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
+  //   await bankContract.connect(b3).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
+
+  //   await bankContract.connect(b1).cashIn(0, parseUnits("90", 18), parseUnits("10", 18), {value: parseUnits("100", 18)})
+  //   await bankContract.withdrawDividend(0)
+  //   await skipBlock(100)
+  //   // await bankContract.withdrawTeamAmount(0);
+  //   await showUser("b0", b0.address)
+
+  //   async function showUser(userName: string, userAddress: string) {
+  //     console.log(
+  //       `${userName}, eth balance: `,
+  //       parseFloat((await provider.getBalance(userAddress)).toString()) / 1e18
+  //     );
+  //     console.log(
+  //       `${userName}, EBet balance: `,
+  //       parseFloat(
+  //         (await equalBetTokenContract.balanceOf(userAddress)).toString()
+  //       ) / 1e18
+  //     );
+  //     console.log(
+  //       `${userName}, bank LP Token amount: `,
+  //       (await contractBankLPTokenOfGasToken.balanceOf(userAddress)) / 1e18
+  //     );
+  //   }
+  //   async function skipBlock(blocks: number) {
+  //     for (let i = 0; i < blocks; i++) {
+  //       await bankContract.setAllowedToken(GAS_TOKEN_ADDRESS, true);
+  //     }
+  //   }
+  // });
 });
