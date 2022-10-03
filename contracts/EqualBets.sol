@@ -190,6 +190,30 @@ contract EqualBets is ChainlinkClient {
         return games;
     }
 
+    function getLastHandicapBets(uint256 dataLength)
+        public
+        view
+        returns (HandicapBet[] memory)
+    {
+        // mapping(uint256 => HandicapBet) public handicapBets;
+        // uint256[] public handicapBetIds;
+        // uint256 handicapBetsCount;
+
+        uint256 betsLength = handicapBetsCount;
+        if (betsLength < dataLength) {
+            dataLength = betsLength;
+        }
+        HandicapBet[] memory bets = new HandicapBet[](dataLength);
+        if (dataLength != 0) {
+            uint256 betIndex;
+            for (uint256 i = betsLength; i > betsLength - dataLength; i--) {
+                bets[betIndex] = handicapBets[handicapBetIds[i - 1]];
+                betIndex++;
+            }
+        }
+        return bets;
+    }
+
     function getLastUserHandicapBets(uint256 dataLength, address user)
         public
         view
@@ -336,7 +360,6 @@ contract EqualBets is ChainlinkClient {
         if (isAllowedToken(_token) == false) {
             revert ForbiddenToken();
         }
-
         address user = msg.sender;
         Token storage token = tokens[_token];
         bool isGasToken = _token == address(0);
@@ -414,12 +437,17 @@ contract EqualBets is ChainlinkClient {
         HandicapBet storage bet = handicapBets[betId];
         address tokenAddress = bet.handicapBetDetail.token;
         bool isGasToken = tokenAddress == address(0);
-
-        require(_choosen != HomeAway.None, "choosen is invalid");
+        // need to confirm with therundown
+        require(
+            bet.matchDetail.status != MatchStatus.STATUS_FULL_TIME,
+            "match has finish"
+        );
         require(
             bet.acceptUser == address(0),
             "the bet is already taken by other user"
         );
+        require(user != bet.proposeUser, "can not accept your own bet");
+        require(_choosen != HomeAway.None, "choosen is invalid");
         if (isGasToken) {
             require(
                 msg.value >= ((bet.handicapBetDetail.amount * 100) / 99),
