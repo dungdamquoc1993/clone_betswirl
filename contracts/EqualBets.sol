@@ -162,6 +162,14 @@ contract EqualBets is ChainlinkClient {
         return gamesCreate[gameId];
     }
 
+    function getGameResolve(bytes32 gameId)
+        public
+        view
+        returns (GameResolve memory)
+    {
+        return gamesResolve[gameId];
+    }
+
     function getLastGamesCreate(uint256 dataLength)
         public
         view
@@ -252,7 +260,7 @@ contract EqualBets is ChainlinkClient {
         req.addUint("sportId", _sportId);
         sendOperatorRequest(req, fee);
     }
-    
+
     // test full fil game Resolve
     function testFulfillGamesResolve(
         bytes32[] memory _gameIds,
@@ -260,10 +268,6 @@ contract EqualBets is ChainlinkClient {
         uint8[] memory _awayScore,
         uint8[] memory _statusId
     ) public {
-        // bytes32 gameId;
-        // uint8 homeScore;
-        // uint8 awayScore;
-        // uint8 statusId;
         uint256 gamesLength = _gameIds.length;
         for (uint256 i = 0; i < gamesLength; i++) {
             GameResolve memory game = GameResolve({
@@ -323,6 +327,8 @@ contract EqualBets is ChainlinkClient {
         GameCreate storage game = gamesCreate[gameId];
         if (_stronger != HomeAway.None && (_odds == 0 || _odds % 25 != 0)) {
             revert("odds invalid");
+        } else if (_stronger == HomeAway.None && _odds != 0) {
+            revert("odds invalid");
         }
         if (!(game.startTime > 0)) {
             revert("game are not yet create");
@@ -359,7 +365,6 @@ contract EqualBets is ChainlinkClient {
 
         uint256 _fee = (_betAmount * 1) / 100;
         _betAmount = _betAmount - _fee;
-
         HandicatBetDetail memory _handicapBetDetail = HandicatBetDetail({
             token: _token,
             amount: _betAmount,
