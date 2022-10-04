@@ -349,6 +349,10 @@ contract EqualBets is ChainlinkClient {
         address _token
     ) public payable {
         GameCreate storage game = gamesCreate[gameId];
+        require(
+            game.startTime + 5400 > block.timestamp,
+            "this match has already finish"
+        );
         if (_stronger != HomeAway.None && (_odds == 0 || _odds % 25 != 0)) {
             revert("odds invalid");
         } else if (_stronger == HomeAway.None && _odds != 0) {
@@ -437,15 +441,17 @@ contract EqualBets is ChainlinkClient {
         HandicapBet storage bet = handicapBets[betId];
         address tokenAddress = bet.handicapBetDetail.token;
         bool isGasToken = tokenAddress == address(0);
-        // need to confirm with therundown
+
+        GameCreate storage game = gamesCreate[bet.gameId];
         require(
-            bet.matchDetail.status != MatchStatus.STATUS_FULL_TIME,
-            "match has finish"
+            game.startTime + 5400 > block.timestamp,
+            "this match has already finish"
         );
         require(
             bet.acceptUser == address(0),
             "the bet is already taken by other user"
         );
+
         require(user != bet.proposeUser, "can not accept your own bet");
         require(_choosen != HomeAway.None, "choosen is invalid");
         if (isGasToken) {
@@ -513,6 +519,15 @@ contract EqualBets is ChainlinkClient {
         HandicapBet storage bet = handicapBets[betId];
         if (bet.matchDetail.status != MatchStatus.STATUS_FULL_TIME) {
             revert("match status is invalid");
+        }
+        if (
+            bet.acceptUser == address(0) &&
+            bet.matchDetail.status == MatchStatus.STATUS_FULL_TIME
+        ) {
+            address proposeUser = bet.proposeUser;
+            uint256 payOut = bet.handicapBetDetail.amount;
+            _safeTransfer(proposeUser, bet.handicapBetDetail.token, payOut);
+            return;
         }
         uint32 homeScore = bet.matchDetail.homeScore;
         uint32 awayScore = bet.matchDetail.awayScore;
@@ -678,6 +693,7 @@ contract EqualBets is ChainlinkClient {
         //     revert("match not finish yet");
         // }
         GameResolve storage gameResolved = gamesResolve[bet.gameId];
+
         if (gameResolved.statusId == 11) {
             bet.matchDetail.homeScore = gameResolved.homeScore;
             bet.matchDetail.awayScore = gameResolved.awayScore;
