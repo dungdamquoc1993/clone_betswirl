@@ -47,19 +47,19 @@ describe("apply new casino model", () => {
     await betTokenContract.connect(b0).approve(equalBetContract.address, parseUnits("1000", 18))
   });
 
-  it("test accept bet by equaBetToken no stronger", async () => {
+  it("stronger home odds 25", async () => {
     await equalBetContract.testFulfillGamesResolve(
       ["0x3100000000000000000000000000000000000000000000000000000000000000"],
-      [2],
-      [1],
+      [0],
+      [0],
       [11]
     )
     
     await equalBetContract.newHandicapBet(
       "0x3100000000000000000000000000000000000000000000000000000000000000",
-      0, // stronger
+      1, // stronger
       0, // choosen
-      0, // odds
+      25, // odds
       parseUnits("10", 18),
       betTokenContract.address
     );
@@ -67,15 +67,12 @@ describe("apply new casino model", () => {
     const betId = parseInt((await equalBetContract.getLastHandicapBets(10))[0].id)
     await betTokenContract.connect(b1).approve(equalBetContract.address, parseUnits("1000", 18))
     await equalBetContract.connect(b1).acceptHandicapBet(betId, 1)
-    expect((await equalBetContract.handicapBets(betId)).proposeUser).equal(b0.address)
-    expect((await equalBetContract.handicapBets(betId)).acceptUser).equal(b1.address)
-    expect((await equalBetContract.handicapBets(betId)).matchDetail.homeChoosen).equal(b1.address)
-    expect((await equalBetContract.handicapBets(betId)).matchDetail.awayChoosen).equal(b0.address)
-    expect((await equalBetContract.handicapBets(betId)).handicapBetDetail.amount).equal(parseUnits("9.9", 18))
-    expect((await equalBetContract.handicapBets(betId)).handicapBetDetail.token).equal(betTokenContract.address)
-    expect((await betTokenContract.balanceOf(equalBetContract.address))).equal(parseUnits("20", 18))
-
-
+    await equalBetContract.resolveHandicapBet(betId)
+    console.log((await betTokenContract.balanceOf(b0.address))/1e18)
+    console.log((await betTokenContract.balanceOf(b1.address))/1e18)
+    console.log((await betTokenContract.balanceOf(equalBetContract.address))/1e18)
   });
+
+
 
 });

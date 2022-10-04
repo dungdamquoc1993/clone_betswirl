@@ -540,7 +540,7 @@ contract EqualBets is ChainlinkClient {
         uint256 winPayOut;
         uint256 losePayOut;
         uint256 _fee;
-        uint256 winAmount;
+        uint256 totalBetAmount;
         if (stronger == HomeAway.HomeTeam) {
             strongerScore = homeScore * 100;
             weakerScore = awayScore * 100 + odds;
@@ -551,50 +551,51 @@ contract EqualBets is ChainlinkClient {
                     // choosen weaker lose half money
                     winner = bet.matchDetail.homeChoosen;
                     loser = bet.matchDetail.awayChoosen;
-                    winAmount = (bet.handicapBetDetail.amount * 150) / 100;
-                    _fee = (winAmount * 2) / 100;
-                    losePayOut = (bet.handicapBetDetail.amount * 50) / 100;
-                    winPayOut = winAmount - fee;
+                    totalBetAmount = bet.handicapBetDetail.amount * 2;
+                    _fee = (bet.handicapBetDetail.amount * 2) / 100;
+                    losePayOut = (totalBetAmount * 1) / 4;
+                    winPayOut = (totalBetAmount * 3) / 4 - _fee;
                 } else if (strongerScore - weakerScore > 25) {
                     // chossen stronger win all money
                     // choosen weaker lose all money
                     winner = bet.matchDetail.homeChoosen;
                     loser = bet.matchDetail.awayChoosen;
-                    winAmount = (bet.handicapBetDetail.amount * 200) / 100;
-                    _fee = (winAmount * 2) / 100;
+                    totalBetAmount = bet.handicapBetDetail.amount * 2;
+                    _fee = (bet.handicapBetDetail.amount * 2) / 100;
                     losePayOut = 0;
-                    winPayOut = winAmount - fee;
+                    winPayOut = totalBetAmount - _fee;
                 }
             } else if (strongerScore < weakerScore) {
                 if (weakerScore - strongerScore == 25) {
+                    // did test
                     // chấp 1/4
                     // choosen weaker win half money
                     // choosen stronger lose half money
                     winner = bet.matchDetail.awayChoosen;
                     loser = bet.matchDetail.homeChoosen;
-                    winAmount = (bet.handicapBetDetail.amount * 150) / 100;
-                    _fee = (winAmount * 2) / 100;
-                    losePayOut = (bet.handicapBetDetail.amount * 50) / 100;
-                    winPayOut = winAmount - fee;
+                    totalBetAmount = bet.handicapBetDetail.amount * 2;
+                    _fee = (bet.handicapBetDetail.amount * 2) / 100;
+                    losePayOut = (totalBetAmount * 1) / 4;
+                    winPayOut = (totalBetAmount * 3) / 4 - _fee;
                 } else if (weakerScore - strongerScore > 25) {
                     // choosen weaker win all money
                     // choosen stronger lose all money
                     winner = bet.matchDetail.awayChoosen;
                     loser = bet.matchDetail.homeChoosen;
-                    winAmount = (bet.handicapBetDetail.amount * 200) / 100;
-                    _fee = (winAmount * 2) / 100;
+                    totalBetAmount = bet.handicapBetDetail.amount * 2;
+                    _fee = (bet.handicapBetDetail.amount * 2) / 100;
                     losePayOut = 0;
-                    winPayOut = winAmount - fee;
+                    winPayOut = totalBetAmount - _fee;
                 }
             } else if (strongerScore == weakerScore) {
                 // choosen stronger loose all money
                 // choosen weaker win all money
                 winner = bet.matchDetail.awayChoosen;
                 loser = bet.matchDetail.homeChoosen;
-                winAmount = (bet.handicapBetDetail.amount * 200) / 100;
-                _fee = (winAmount * 2) / 100;
+                totalBetAmount = bet.handicapBetDetail.amount * 2;
+                _fee = (bet.handicapBetDetail.amount * 2) / 100;
                 losePayOut = 0;
-                winPayOut = winAmount - fee;
+                winPayOut = totalBetAmount - _fee;
             }
         } else if (stronger == HomeAway.AwayTeam) {
             strongerScore = awayScore * 100;
@@ -606,20 +607,20 @@ contract EqualBets is ChainlinkClient {
                     // choosen weaker lose half money
                     winner = bet.matchDetail.awayChoosen;
                     loser = bet.matchDetail.homeChoosen;
-                    winAmount = (bet.handicapBetDetail.amount * 150) / 100;
-                    _fee = (winAmount * 2) / 100;
-                    losePayOut = (bet.handicapBetDetail.amount * 50) / 100;
-                    winPayOut = winAmount - fee;
+                    totalBetAmount = bet.handicapBetDetail.amount * 2;
+                    _fee = (bet.handicapBetDetail.amount * 2) / 100;
+                    losePayOut = (totalBetAmount * 1) / 4;
+                    winPayOut = (totalBetAmount * 3) / 4 - _fee;
                 } else if (strongerScore - weakerScore > 25) {
                     //
                     // chossen stronger win all money
                     // choosen weaker lose all money
                     winner = bet.matchDetail.awayChoosen;
                     loser = bet.matchDetail.homeChoosen;
-                    winAmount = (bet.handicapBetDetail.amount * 200) / 100;
-                    _fee = (winAmount * 2) / 100;
+                    totalBetAmount = bet.handicapBetDetail.amount * 2;
+                    _fee = (bet.handicapBetDetail.amount * 2) / 100;
                     losePayOut = 0;
-                    winPayOut = winAmount - fee;
+                    winPayOut = totalBetAmount - _fee;
                 }
             } else if (strongerScore < weakerScore) {
                 if (weakerScore - strongerScore == 25) {
@@ -628,29 +629,29 @@ contract EqualBets is ChainlinkClient {
                     // choosen stronger lose half money
                     winner = bet.matchDetail.homeChoosen;
                     loser = bet.matchDetail.awayChoosen;
-                    winAmount = (bet.handicapBetDetail.amount * 150) / 100;
-                    _fee = (winAmount * 2) / 100;
-                    losePayOut = (bet.handicapBetDetail.amount * 50) / 100;
-                    winPayOut = winAmount - fee;
+                    totalBetAmount = bet.handicapBetDetail.amount * 2;
+                    _fee = (bet.handicapBetDetail.amount * 2) / 100;
+                    losePayOut = (totalBetAmount * 1) / 4;
+                    winPayOut = (totalBetAmount * 3) / 4 - _fee;
                 } else if (weakerScore - strongerScore > 25) {
                     // choosen weaker win all money
                     // choosen stronger lose all money
                     winner = bet.matchDetail.homeChoosen;
                     loser = bet.matchDetail.awayChoosen;
-                    winAmount = (bet.handicapBetDetail.amount * 200) / 100;
-                    _fee = (winAmount * 2) / 100;
+                    totalBetAmount = bet.handicapBetDetail.amount * 2;
+                    _fee = (bet.handicapBetDetail.amount * 2) / 100;
                     losePayOut = 0;
-                    winPayOut = winAmount - fee;
+                    winPayOut = totalBetAmount - _fee;
                 }
             } else if (strongerScore == weakerScore) {
                 // choosen stronger loose all money
                 // choosen weaker win all money
                 winner = bet.matchDetail.homeChoosen;
                 loser = bet.matchDetail.awayChoosen;
-                winAmount = (bet.handicapBetDetail.amount * 200) / 100;
-                _fee = (winAmount * 2) / 100;
+                totalBetAmount = bet.handicapBetDetail.amount * 2;
+                _fee = (bet.handicapBetDetail.amount * 2) / 100;
                 losePayOut = 0;
-                winPayOut = winAmount - fee;
+                winPayOut = totalBetAmount - _fee;
             }
         } else {
             if (homeScore > awayScore) {
@@ -658,26 +659,28 @@ contract EqualBets is ChainlinkClient {
                 // weaker lose all money
                 winner = bet.matchDetail.homeChoosen;
                 loser = bet.matchDetail.awayChoosen;
-                winAmount = (bet.handicapBetDetail.amount * 200) / 100;
-                _fee = (winAmount * 2) / 100;
+                totalBetAmount = bet.handicapBetDetail.amount * 2;
+                _fee = (bet.handicapBetDetail.amount * 2) / 100;
                 losePayOut = 0;
-                winPayOut = winAmount - fee;
+                winPayOut = totalBetAmount - _fee;
             } else if (homeScore < awayScore) {
                 // stronger lose all money
                 // weaker win all money
                 winner = bet.matchDetail.awayChoosen;
                 loser = bet.matchDetail.homeChoosen;
-                winAmount = (bet.handicapBetDetail.amount * 200) / 100;
-                _fee = (winAmount * 2) / 100;
+                totalBetAmount = bet.handicapBetDetail.amount * 2;
+                _fee = (bet.handicapBetDetail.amount * 2) / 100;
                 losePayOut = 0;
-                winPayOut = winAmount - fee;
+                winPayOut = totalBetAmount - _fee;
             } else {
                 // even money back to user
                 winner = bet.proposeUser;
                 loser = bet.acceptUser;
-                _fee = (bet.handicapBetDetail.amount * 2) / 100;
-                winPayOut = (bet.handicapBetDetail.amount * 99) / 100;
-                losePayOut = (bet.handicapBetDetail.amount * 99) / 100;
+                totalBetAmount = bet.handicapBetDetail.amount * 2;
+                uint256 _feePerUser = (bet.handicapBetDetail.amount * 1) / 100;
+                winPayOut = totalBetAmount * 2 /4 - _feePerUser;
+                losePayOut = totalBetAmount * 2 /4 - _feePerUser;
+                _fee = _feePerUser * 2;
             }
         }
         _safeTransfer(loser, bet.handicapBetDetail.token, losePayOut);
