@@ -673,10 +673,10 @@ contract EqualBets is ChainlinkClient {
 
     function resolveHandicapBet(uint256 betId) public {
         HandicapBet storage bet = handicapBets[betId];
-        GameCreate storage gameCreated = gamesCreate[bet.gameId];
-        if (block.timestamp < gameCreated.startTime + 7200) {
-            revert("match not finish yet");
-        }
+        // GameCreate storage gameCreated = gamesCreate[bet.gameId];
+        // if (block.timestamp < gameCreated.startTime + 7200) {
+        //     revert("match not finish yet");
+        // }
         GameResolve storage gameResolved = gamesResolve[bet.gameId];
         if (gameResolved.statusId == 11) {
             bet.matchDetail.homeScore = gameResolved.homeScore;
