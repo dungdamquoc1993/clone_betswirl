@@ -47,19 +47,19 @@ describe("apply new casino model", () => {
     await betTokenContract.connect(b0).approve(equalBetContract.address, parseUnits("1000", 18))
   });
 
-  it("stronger home odds 25", async () => {
+  it("stronger home odds 74", async () => {
     await equalBetContract.testFulfillGamesResolve(
       ["0x3100000000000000000000000000000000000000000000000000000000000000"],
       [0],
-      [0],
+      [1],
       [11]
     )
     
     await equalBetContract.newHandicapBet(
       "0x3100000000000000000000000000000000000000000000000000000000000000",
-      1, // stronger
+      0, // stronger
       0, // choosen
-      25, // odds
+      0, // odds
       parseUnits("10", 18),
       betTokenContract.address
     );
@@ -68,8 +68,8 @@ describe("apply new casino model", () => {
     await betTokenContract.connect(b1).approve(equalBetContract.address, parseUnits("1000", 18))
     await equalBetContract.connect(b1).acceptHandicapBet(betId, 1)
     await equalBetContract.resolveHandicapBet(betId)
-    console.log((await betTokenContract.balanceOf(b0.address))/1e18)
-    console.log((await betTokenContract.balanceOf(b1.address))/1e18)
+    console.log("away: ", (await betTokenContract.balanceOf(b0.address))/1e18)
+    console.log("home: ", (await betTokenContract.balanceOf(b1.address))/1e18)
     console.log((await betTokenContract.balanceOf(equalBetContract.address))/1e18)
   });
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
-import "./library/SafeERC20.sol";
-import "./interface/IERC20.sol";
-import "./enums.sol";
+import "../library/SafeERC20.sol";
+import "../interface/IERC20.sol";
+import "../enums.sol";
 import "hardhat/console.sol";
 
 pragma solidity ^0.8.1;
@@ -53,7 +53,6 @@ contract EqualBets is ChainlinkClient {
 
     struct Token {
         bool allowed;
-        uint64 pendingCount;
         uint256 minBetAmount;
         uint256 maxBetAmount;
     }
@@ -119,6 +118,32 @@ contract EqualBets is ChainlinkClient {
         } else {
             IERC20(token).safeTransfer(user, amount);
         }
+    }
+
+    function setFee(uint256 _fee) public {
+        fee = _fee;
+    }
+
+    function setJobId(bytes32 _jobId) public {
+        jobId = _jobId;
+    }
+
+    function getBalance(address token) public view returns (uint256) {
+        uint256 balance;
+        bool isGasToken = token == address(0);
+        if (isGasToken) {
+            balance = address(this).balance;
+        } else {
+            balance = IERC20(token).balanceOf(address(this));
+        }
+        return balance;
+    }
+
+    function withdawBetFee(address _token) public {
+        Token storage token = tokens[_token];
+        require(token.allowed == true, "token not allowed");
+        uint256 balance = getBalance(_token);
+        _safeTransfer(msg.sender, _token, balance);
     }
 
     function addToken(address token) public {
@@ -556,6 +581,7 @@ contract EqualBets is ChainlinkClient {
                     losePayOut = (totalBetAmount * 1) / 4;
                     winPayOut = (totalBetAmount * 3) / 4 - _fee;
                 } else if (strongerScore - weakerScore > 25) {
+                    // did test
                     // chossen stronger win all money
                     // choosen weaker lose all money
                     winner = bet.matchDetail.homeChoosen;
@@ -678,8 +704,8 @@ contract EqualBets is ChainlinkClient {
                 loser = bet.acceptUser;
                 totalBetAmount = bet.handicapBetDetail.amount * 2;
                 uint256 _feePerUser = (bet.handicapBetDetail.amount * 1) / 100;
-                winPayOut = totalBetAmount * 2 /4 - _feePerUser;
-                losePayOut = totalBetAmount * 2 /4 - _feePerUser;
+                winPayOut = (totalBetAmount * 2) / 4 - _feePerUser;
+                losePayOut = (totalBetAmount * 2) / 4 - _feePerUser;
                 _fee = _feePerUser * 2;
             }
         }
@@ -691,10 +717,6 @@ contract EqualBets is ChainlinkClient {
 
     function resolveHandicapBet(uint256 betId) public {
         HandicapBet storage bet = handicapBets[betId];
-        // GameCreate storage gameCreated = gamesCreate[bet.gameId];
-        // if (block.timestamp < gameCreated.startTime + 7200) {
-        //     revert("match not finish yet");
-        // }
         GameResolve storage gameResolved = gamesResolve[bet.gameId];
 
         if (gameResolved.statusId == 11) {
