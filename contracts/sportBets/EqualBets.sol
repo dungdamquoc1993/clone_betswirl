@@ -7,7 +7,7 @@ import "hardhat/console.sol";
 
 pragma solidity ^0.8.1;
 
-contract EqualBets is ChainlinkClient {
+abstract contract EqualBets is ChainlinkClient {
     using Chainlink for Chainlink.Request;
     using SafeERC20 for IERC20;
 
