@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.1;
 
+enum OverUnder {
+    None,
+    Under,
+    Over
+}
+
 enum HomeAway {
     None,
     HomeTeam,
@@ -8,7 +14,7 @@ enum HomeAway {
 }
 
 enum MatchStatus {
-    STATUS_NONE,
+    STATUS_NONE, 
     STATUS_CANCELED,
     STATUS_DELAYED,
     STATUS_END_OF_FIGHT,
@@ -31,5 +37,10 @@ enum MatchStatus {
     STATUS_TBD,
     STATUS_UNCONTESTED,
     STATUS_ABANDONED,
-    STATUS_FORFEIT
+    STATUS_END_OF_EXTRATIME,
+    STATUS_END_OF_REGULATION,
+    STATUS_FORFEIT,
+    STATUS_HALFTIME_ET,
+    STATUS_OVERTIME,
+    STATUS_SHOOTOUT
 }
