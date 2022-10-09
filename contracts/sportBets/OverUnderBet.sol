@@ -363,6 +363,7 @@ contract OverUnderBets is Ownable, Pausable {
     function resolveOverUnderBet(uint256 betId) public {
         OverUnderBet storage bet = overUnderBets[betId];
         require(bet.resolved == false, "bet has already resolved");
+        IVault.GameCreate memory gameCreated = vault.getGameCreate(bet.gameId);
         IVault.GameResolve memory gameResolved = vault.getGameResolve(
             bet.gameId
         );
@@ -371,6 +372,23 @@ contract OverUnderBets is Ownable, Pausable {
             bet.matchDetail.awayScore = gameResolved.awayScore;
             bet.matchDetail.status = MatchStatus.STATUS_FULL_TIME;
             _resolveFullTimeOverUnderBet(betId);
+        } else if (
+            gameResolved.statusId == 0 &&
+            block.timestamp > gameCreated.startTime + (12 * 60 * 60)
+        ) {
+            vault.payout(
+                bet.proposeUser,
+                bet.overUnderBetDetail.token,
+                bet.overUnderBetDetail.amount
+            );
+            if (bet.acceptUser != address(0)) {
+                vault.payout(
+                    bet.acceptUser,
+                    bet.overUnderBetDetail.token,
+                    bet.overUnderBetDetail.amount
+                );
+            }
+            bet.resolved = true;
         } else {
             revert(
                 "match has not resolve yet. resolve match before resolve bet"

@@ -296,6 +296,7 @@ contract HandicapBets is Ownable, Pausable {
             address proposeUser = bet.proposeUser;
             uint256 payOut = bet.handicapBetDetail.amount;
             vault.payout(proposeUser, bet.handicapBetDetail.token, payOut);
+            bet.resolved = true;
             return;
         }
         uint32 homeScore = bet.matchDetail.homeScore;
@@ -463,6 +464,7 @@ contract HandicapBets is Ownable, Pausable {
     function resolveHandicapBet(uint256 betId) public {
         HandicapBet storage bet = handicapBets[betId];
         require(bet.resolved == false, "bet has already resolved");
+        IVault.GameCreate memory gameCreated = vault.getGameCreate(bet.gameId);
         IVault.GameResolve memory gameResolved = vault.getGameResolve(
             bet.gameId
         );
@@ -471,8 +473,10 @@ contract HandicapBets is Ownable, Pausable {
             bet.matchDetail.awayScore = gameResolved.awayScore;
             bet.matchDetail.status = MatchStatus.STATUS_FULL_TIME;
             _resolveFullTimeHandicapBet(betId);
-        } else if (gameResolved.statusId == 15 || gameResolved.statusId == 2) {
-            bet.matchDetail.status = MatchStatus.STATUS_CANCELED;
+        } else if (
+            gameResolved.statusId == 0 &&
+            block.timestamp > gameCreated.startTime + (12 * 60 * 60)
+        ) {
             vault.payout(
                 bet.proposeUser,
                 bet.handicapBetDetail.token,
@@ -485,6 +489,7 @@ contract HandicapBets is Ownable, Pausable {
                     bet.handicapBetDetail.amount
                 );
             }
+            bet.resolved = true;
         } else {
             revert(
                 "match has not resolve yet. resolve match before resolve bet"
