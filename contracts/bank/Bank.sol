@@ -36,6 +36,7 @@ contract Bank is AccessControlEnumerable {
         uint256 allocPoint;
         uint256 lastRewardBlock;
         uint256 accEBetPerLpToken;
+        uint256 minBetAmount;
     }
 
     struct TokenMetadata {
@@ -310,7 +311,9 @@ contract Bank is AccessControlEnumerable {
 
         uint256 roleMemberCount = getRoleMemberCount(GAME_ROLE);
         for (uint256 i; i < roleMemberCount; i++) {
-            if (IGame(getRoleMember(GAME_ROLE, i)).hasPendingBets(tokenAddress)) {
+            if (
+                IGame(getRoleMember(GAME_ROLE, i)).hasPendingBets(tokenAddress)
+            ) {
                 revert TokenHasPendingBets();
             }
         }
@@ -384,6 +387,17 @@ contract Bank is AccessControlEnumerable {
         partner.rewardDebt =
             (partner.amountOfLp * token.accEBetPerLpToken) /
             1e18;
+    }
+
+    function getMinBetAmount(address token)
+        external
+        view
+        returns (uint256 minBetAmount)
+    {
+        minBetAmount = tokens[token].minBetAmount;
+        if (minBetAmount == 0) {
+            minBetAmount = 10000;
+        }
     }
 
     function _allocateHouseEdge(address token, uint256 fees) private {
@@ -541,6 +555,13 @@ contract Bank is AccessControlEnumerable {
     {
         tokens[token].VRFSubId = subId;
         emit SetTokenVRFSubId(token, subId);
+    }
+
+    function setTokenMinBetAmount(address token, uint256 tokenMinBetAmount)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        tokens[token].minBetAmount = tokenMinBetAmount;
     }
 
     function getPriceOfToken(uint256 _pid) public view returns (uint256) {
