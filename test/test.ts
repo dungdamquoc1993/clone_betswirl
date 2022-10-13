@@ -12,60 +12,106 @@ import { ethers, waffle } from "hardhat";
 // setHouseEdgeSplit
 // setTokenVRFSubId
 
-// const ADMIN_ROLE = ethers.utils.hexZeroPad(ethers.utils.hexlify(0x00), 32);
-// const GAME_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GAME_ROLE"));
-// const GAS_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000";
+const ADMIN_ROLE = ethers.utils.hexZeroPad(ethers.utils.hexlify(0x00), 32);
+const GAME_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("GAME_ROLE"));
+const GAS_TOKEN_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-// describe("apply new casino model", () => {
-//   let tx;
-//   let bankContract: Contract,
-//     equalBetTokenContract: Contract,
-//     contractBankLPTokenOfGasToken: Contract,
-//     contractBankLPTokenOfERC20: Contract;
-//   const BankLPTokenArtifacts = require("../artifacts/contracts/BankLPToken.sol/BankLPToken.json");
-//   const provider = waffle.provider;
-//   let b0: SignerWithAddress,
-//     b1: SignerWithAddress,
-//     b2: SignerWithAddress,
-//     b3: SignerWithAddress;
-//   beforeEach(async () => {
-//     const [a0, a1, a2, a3] = await ethers.getSigners();
-//     [b0, b1, b2, b3] = [a0, a1, a2, a3];
+describe("apply new casino model", () => {
+  let tx;
+  let bankContract: Contract,
+    equalBetTokenContract: Contract,
+    contractBankLPTokenOfGasToken: Contract,
+    contractBankLPTokenOfERC20: Contract;
+  const BankLPTokenArtifacts = require("../artifacts/contracts/BankLPToken.sol/BankLPToken.json");
+  const provider = waffle.provider;
+  let b0: SignerWithAddress,
+    b1: SignerWithAddress,
+    b2: SignerWithAddress,
+    b3: SignerWithAddress;
+  beforeEach(async () => {
+    const [a0, a1, a2, a3] = await ethers.getSigners();
+    [b0, b1, b2, b3] = [a0, a1, a2, a3];
 
-//     const equalBetFactory = await ethers.getContractFactory("EqualBetsToken");
-//     equalBetTokenContract = await equalBetFactory.deploy();
+    const equalBetFactory = await ethers.getContractFactory("EqualBetsToken");
+    equalBetTokenContract = await equalBetFactory.deploy();
 
-//     const bankFactory = await ethers.getContractFactory("Bank");
-//     bankContract = await bankFactory.deploy(
-//       parseUnits("10", 18),
-//       b0.address,
-//       equalBetTokenContract.address,
-//       8
-//     );
+    const bankFactory = await ethers.getContractFactory("Bank");
+    bankContract = await bankFactory.deploy(
+      parseUnits("10", 18),
+      b0.address,
+      equalBetTokenContract.address,
+      8
+    );
 
-//     await equalBetTokenContract.transferOwnership(bankContract.address);
+    await equalBetTokenContract.transferOwnership(bankContract.address);
 
-//     await bankContract.addToken(GAS_TOKEN_ADDRESS, 1000, parseUnits("10", 18));
-//     await bankContract.setAllowedToken(GAS_TOKEN_ADDRESS, true);
-//     await bankContract.setPausedToken(GAS_TOKEN_ADDRESS, false);
-//     await bankContract.setHouseEdgeSplit(GAS_TOKEN_ADDRESS, 5000, 5000);
-//     const BankLPTokenOfGasAddress = await bankContract.getLpTokenAddress(
-//       bankContract.address,
-//       GAS_TOKEN_ADDRESS
-//     );
-//     contractBankLPTokenOfGasToken = await ethers.getContractAt(
-//       BankLPTokenArtifacts.abi,
-//       BankLPTokenOfGasAddress
-//     );
-//     const BankLPTokenOfEbetAddress = await bankContract.getLpTokenAddress(
-//       bankContract.address,
-//       equalBetTokenContract.address
-//     );
-//     contractBankLPTokenOfERC20 = await ethers.getContractAt(
-//       BankLPTokenArtifacts.abi,
-//       BankLPTokenOfEbetAddress
-//     );
-//   });
+    await bankContract.addToken(GAS_TOKEN_ADDRESS, 1000, parseUnits("10", 18));
+    await bankContract.setAllowedToken(GAS_TOKEN_ADDRESS, true);
+    await bankContract.setPausedToken(GAS_TOKEN_ADDRESS, false);
+    await bankContract.setHouseEdgeSplit(GAS_TOKEN_ADDRESS, 5000, 5000);
+    const BankLPTokenOfGasAddress = await bankContract.getLpTokenAddress(
+      bankContract.address,
+      GAS_TOKEN_ADDRESS
+    );
+    contractBankLPTokenOfGasToken = await ethers.getContractAt(
+      BankLPTokenArtifacts.abi,
+      BankLPTokenOfGasAddress
+    );
+    const BankLPTokenOfEbetAddress = await bankContract.getLpTokenAddress(
+      bankContract.address,
+      equalBetTokenContract.address
+    );
+    contractBankLPTokenOfERC20 = await ethers.getContractAt(
+      BankLPTokenArtifacts.abi,
+      BankLPTokenOfEbetAddress
+    );
+  });
+
+  it("test deposit and withdraw check LP balacnce", async () => {
+    await bankContract.connect(b1).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
+    await skipBlock(10)
+    await bankContract.connect(b2).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
+    await skipBlock(10)
+
+    await showUser("b1", b1.address)
+    await showUser("b2", b2.address)
+
+    await bankContract.connect(b3).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
+    await skipBlock(100)
+
+    // await bankContract.claimReward(0, b1.address)
+    // await bankContract.claimReward(0, b2.address)
+    // await bankContract.claimReward(0, b3.address)
+
+    async function showUser(userName: string, userAddress: string) {
+      console.log(
+        `${userName}, EBet balance: `,
+        parseFloat(
+          (await equalBetTokenContract.balanceOf(userAddress)).toString()
+        ) / 1e18
+      );
+      console.log(
+        `${userName}, Ebet pending reward: `,
+        (await bankContract.pendingEbet(0, userAddress) / 1e18)
+      );
+    }
+    // console.log(
+    //   parseFloat(
+    //     (await equalBetTokenContract.balanceOf(b2.address)).toString()
+    //   ) / 1e18
+    // );console.log(
+    //   `b3, EBet balance: `,
+    //   parseFloat(
+    //     (await equalBetTokenContract.balanceOf(b3.address)).toString()
+    //   ) / 1e18
+    // );
+    
+    async function skipBlock(blocks: number) {
+      for (let i = 0; i < blocks; i++) {
+        await bankContract.setAllowedToken(GAS_TOKEN_ADDRESS, true);
+      }
+    }
+  });
 
   // it("test deposit and withdraw check LP balacnce", async () => {
   //   await bankContract.connect(b1).deposit(0, parseUnits("10", 18), {value: parseUnits("10", 18)});
@@ -100,4 +146,6 @@ import { ethers, waffle } from "hardhat";
   //     }
   //   }
   // });
-// });
+
+  
+});

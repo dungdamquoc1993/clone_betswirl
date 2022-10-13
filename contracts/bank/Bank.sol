@@ -389,6 +389,36 @@ contract Bank is AccessControlEnumerable {
             1e18;
     }
 
+    function pendingEbet(uint256 _pid, address userAddress)
+        public
+        view
+        returns (uint256)
+    {
+        address tokenAddress = _tokensList[_pid];
+        Token storage token = tokens[tokenAddress];
+        PartnerInfo storage partner = partnerInfo[_pid][userAddress];
+        uint256 accEBetPerLpToken = token.accEBetPerLpToken;
+        uint256 totalLpBalance = IBankLPToken(token.lpToken).totalSupply();
+        if (block.number > token.lastRewardBlock && totalLpBalance != 0) {
+            uint256 multiplier = getMultiplier(
+                token.lastRewardBlock,
+                block.number
+            );
+            uint256 eBetReward = (multiplier *
+                eBetPerBlock *
+                token.allocPoint) / totalAllocPoint;
+            accEBetPerLpToken =
+                accEBetPerLpToken +
+                (eBetReward * 1e18) /
+                totalLpBalance;
+        }
+        console.log(accEBetPerLpToken);
+
+        uint256 pendingReward = ((partner.amountOfLp * accEBetPerLpToken) /
+            1e18) - partner.rewardDebt;
+        return pendingReward;
+    }
+
     function getMinBetAmount(address token)
         external
         view
